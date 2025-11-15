@@ -141,17 +141,32 @@ class F1DataCollector:
             logger.error(f"No data collected for {year}")
             return None
 
-    def collect_multi_year_data(self, save_intermediate=True):
+    def collect_race_data(self, save_intermediate=True):
         """
-        Collect data across multiple years.
+        Main method to collect race data across all configured years.
+
+        This orchestrates the full multi-year collection process with validation,
+        intermediate saves, and comprehensive reporting.
 
         Args:
-            save_intermediate (bool): Save results after each year
+            save_intermediate (bool): Save progress after each year
 
         Returns:
-            pd.DataFrame: Combined results for all years
+            pd.DataFrame: Combined race results for all years
         """
+        from config import RAW_DATA_DIR
+
         all_years_data = []
+        failed_years = []
+        collection_stats = {
+            'total_races': 0,
+            'total_records': 0,
+            'years_collected': []
+        }
+
+        logger.info(f"\n{'='*70}")
+        logger.info(f"Starting full data collection: {self.start_year}-{self.end_year}")
+        logger.info(f"{'='*70}\n")
 
         for year in range(self.start_year, self.end_year + 1):
             logger.info(f"\n{'='*60}")
@@ -161,39 +176,107 @@ class F1DataCollector:
             season_data = self.collect_season_data(year)
 
             if season_data is not None:
+                # Track statistics
+                num_races = season_data['race_name'].nunique()
+                num_records = len(season_data)
+
                 all_years_data.append(season_data)
+                collection_stats['total_races'] += num_races
+                collection_stats['total_records'] += num_records
+                collection_stats['years_collected'].append(year)
+
+                logger.info(f"Year {year} summary: {num_races} races, {num_records} records")
 
                 # Save intermediate results
                 if save_intermediate:
-                    from config import RAW_DATA_DIR
                     output_file = RAW_DATA_DIR / f"races_{year}.csv"
                     season_data.to_csv(output_file, index=False)
-                    logger.info(f"Saved {year} data to {output_file}")
+                    logger.info(f"Saved to {output_file}")
+            else:
+                failed_years.append(year)
+                logger.error(f"Failed to collect data for {year}")
 
         # Combine all years
-        if all_years_data:
-            combined = pd.concat(all_years_data, ignore_index=True)
-            logger.info(f"\nTotal collection: {len(combined)} results from {len(all_years_data)} seasons")
-            return combined
-        else:
-            logger.error("No data collected")
+        if not all_years_data:
+            logger.error("No data collected from any year")
             return None
 
-    def save_data(self, data, filename):
+        combined = pd.concat(all_years_data, ignore_index=True)
+
+        # Data validation
+        logger.info(f"\n{'='*70}")
+        logger.info("Data Validation")
+        logger.info(f"{'='*70}")
+
+        # Check for duplicates
+        duplicates = combined.duplicated(subset=['year', 'round', 'DriverNumber']).sum()
+        if duplicates > 0:
+            logger.warning(f"Found {duplicates} duplicate entries")
+
+        # Verify record counts
+        expected_avg = 20 * 22  # 20 drivers, ~22 races per year
+        actual_avg = collection_stats['total_records'] / len(collection_stats['years_collected'])
+        logger.info(f"Average records per year: {actual_avg:.0f} (expected ~{expected_avg})")
+
+        # Summary
+        logger.info(f"\n{'='*70}")
+        logger.info("Collection Complete!")
+        logger.info(f"{'='*70}")
+        logger.info(f"Years collected: {collection_stats['years_collected']}")
+        logger.info(f"Total races: {collection_stats['total_races']}")
+        logger.info(f"Total records: {collection_stats['total_records']}")
+        logger.info(f"Unique drivers: {combined['DriverNumber'].nunique()}")
+        logger.info(f"Unique circuits: {combined['circuit'].nunique()}")
+
+        if failed_years:
+            logger.warning(f"Failed years: {failed_years}")
+
+        logger.info(f"{'='*70}\n")
+
+        return combined
+
+    def save_data(self, data, filename, create_backup=True):
         """
-        Save collected data to CSV.
+        Save collected data to CSV and pickle formats with optional backup.
 
         Args:
             data (pd.DataFrame): Data to save
-            filename (str): Output filename
+            filename (str): Output filename (without extension)
+            create_backup (bool): Create backup copy
         """
         from config import RAW_DATA_DIR
+        import shutil
 
         if data is None or len(data) == 0:
             logger.warning("No data to save")
             return
 
-        output_path = RAW_DATA_DIR / filename
-        data.to_csv(output_path, index=False)
-        logger.info(f"Saved {len(data)} records to {output_path}")
-        logger.info(f"File size: {output_path.stat().st_size / 1024:.2f} KB")
+        # Remove extension if provided
+        base_filename = filename.replace('.csv', '').replace('.pkl', '')
+
+        # Save as CSV
+        csv_path = RAW_DATA_DIR / f"{base_filename}.csv"
+        data.to_csv(csv_path, index=False)
+        csv_size = csv_path.stat().st_size / 1024
+
+        # Save as pickle for faster loading
+        pkl_path = RAW_DATA_DIR / f"{base_filename}.pkl"
+        data.to_pickle(pkl_path)
+        pkl_size = pkl_path.stat().st_size / 1024
+
+        logger.info(f"Saved {len(data)} records:")
+        logger.info(f"  CSV: {csv_path} ({csv_size:.2f} KB)")
+        logger.info(f"  Pickle: {pkl_path} ({pkl_size:.2f} KB)")
+
+        # Create backup
+        if create_backup:
+            backup_dir = RAW_DATA_DIR / "backup"
+            backup_dir.mkdir(exist_ok=True)
+
+            csv_backup = backup_dir / f"{base_filename}.csv"
+            pkl_backup = backup_dir / f"{base_filename}.pkl"
+
+            shutil.copy2(csv_path, csv_backup)
+            shutil.copy2(pkl_path, pkl_backup)
+
+            logger.info(f"Backup created in {backup_dir}")
