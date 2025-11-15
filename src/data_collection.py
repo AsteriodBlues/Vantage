@@ -140,3 +140,60 @@ class F1DataCollector:
         else:
             logger.error(f"No data collected for {year}")
             return None
+
+    def collect_multi_year_data(self, save_intermediate=True):
+        """
+        Collect data across multiple years.
+
+        Args:
+            save_intermediate (bool): Save results after each year
+
+        Returns:
+            pd.DataFrame: Combined results for all years
+        """
+        all_years_data = []
+
+        for year in range(self.start_year, self.end_year + 1):
+            logger.info(f"\n{'='*60}")
+            logger.info(f"Processing {year} season")
+            logger.info(f"{'='*60}")
+
+            season_data = self.collect_season_data(year)
+
+            if season_data is not None:
+                all_years_data.append(season_data)
+
+                # Save intermediate results
+                if save_intermediate:
+                    from config import RAW_DATA_DIR
+                    output_file = RAW_DATA_DIR / f"races_{year}.csv"
+                    season_data.to_csv(output_file, index=False)
+                    logger.info(f"Saved {year} data to {output_file}")
+
+        # Combine all years
+        if all_years_data:
+            combined = pd.concat(all_years_data, ignore_index=True)
+            logger.info(f"\nTotal collection: {len(combined)} results from {len(all_years_data)} seasons")
+            return combined
+        else:
+            logger.error("No data collected")
+            return None
+
+    def save_data(self, data, filename):
+        """
+        Save collected data to CSV.
+
+        Args:
+            data (pd.DataFrame): Data to save
+            filename (str): Output filename
+        """
+        from config import RAW_DATA_DIR
+
+        if data is None or len(data) == 0:
+            logger.warning("No data to save")
+            return
+
+        output_path = RAW_DATA_DIR / filename
+        data.to_csv(output_path, index=False)
+        logger.info(f"Saved {len(data)} records to {output_path}")
+        logger.info(f"File size: {output_path.stat().st_size / 1024:.2f} KB")
