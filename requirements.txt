@@ -1,0 +1,32 @@
+# Core Data Processing
+fastf1==3.4.0
+pandas==2.2.2
+numpy==1.26.4
+
+# Machine Learning
+scikit-learn==1.5.1
+xgboost==2.1.0
+lightgbm==4.5.0
+catboost==1.2.5
+
+# Hyperparameter Optimization
+optuna==3.6.1
+
+# Model Interpretation
+shap==0.45.1
+
+# Visualization
+matplotlib==3.9.1
+seaborn==0.13.2
+plotly==5.23.0
+
+# Web Dashboard
+streamlit==1.37.1
+
+# Utilities
+tqdm==4.66.5
+joblib==1.4.2
+
+# Jupyter
+jupyter==1.0.0
+ipykernel==6.29.5
