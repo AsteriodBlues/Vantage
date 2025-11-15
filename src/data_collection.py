@@ -280,3 +280,82 @@ class F1DataCollector:
             shutil.copy2(pkl_path, pkl_backup)
 
             logger.info(f"Backup created in {backup_dir}")
+
+    def collect_weather_data(self, race_data_df):
+        """
+        Collect weather data for races in the dataset.
+
+        Weather data is often sparse for older races. This method attempts
+        to extract available weather information where possible.
+
+        Args:
+            race_data_df (pd.DataFrame): Existing race data with year/round info
+
+        Returns:
+            pd.DataFrame: Weather data with race identifiers and conditions
+        """
+        logger.info(f"\n{'='*70}")
+        logger.info("Starting weather data collection")
+        logger.info(f"{'='*70}\n")
+
+        # Get unique race identifiers
+        races = race_data_df[['year', 'round', 'race_name', 'circuit']].drop_duplicates()
+
+        weather_records = []
+        missing_count = 0
+
+        for idx, race in tqdm(races.iterrows(), total=len(races), desc="Collecting weather"):
+            year = race['year']
+            round_num = race['round']
+
+            try:
+                # Load full session to access weather data
+                session = fastf1.get_session(year, round_num, 'R')
+                session.load()
+
+                # Check if weather data exists
+                if hasattr(session, 'weather_data') and session.weather_data is not None:
+                    weather = session.weather_data
+
+                    # Calculate average conditions
+                    weather_record = {
+                        'year': year,
+                        'round': round_num,
+                        'race_name': race['race_name'],
+                        'circuit': race['circuit'],
+                        'air_temp_avg': weather['AirTemp'].mean() if 'AirTemp' in weather else None,
+                        'track_temp_avg': weather['TrackTemp'].mean() if 'TrackTemp' in weather else None,
+                        'humidity_avg': weather['Humidity'].mean() if 'Humidity' in weather else None,
+                        'rainfall': weather['Rainfall'].any() if 'Rainfall' in weather else False,
+                        'wind_speed_avg': weather['WindSpeed'].mean() if 'WindSpeed' in weather else None
+                    }
+
+                    weather_records.append(weather_record)
+                    logger.debug(f"Weather data found for {year} Round {round_num}")
+                else:
+                    missing_count += 1
+                    logger.debug(f"No weather data for {year} Round {round_num}")
+
+            except Exception as e:
+                missing_count += 1
+                logger.debug(f"Failed to get weather for {year} Round {round_num}: {str(e)}")
+
+            # Small delay to be respectful
+            time.sleep(0.3)
+
+        # Create DataFrame
+        if weather_records:
+            weather_df = pd.DataFrame(weather_records)
+
+            coverage_pct = (len(weather_records) / len(races)) * 100
+
+            logger.info(f"\nWeather data collection complete:")
+            logger.info(f"  Total races: {len(races)}")
+            logger.info(f"  Weather data found: {len(weather_records)}")
+            logger.info(f"  Missing: {missing_count}")
+            logger.info(f"  Coverage: {coverage_pct:.1f}%")
+
+            return weather_df
+        else:
+            logger.warning("No weather data collected from any race")
+            return None
