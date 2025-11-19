@@ -145,6 +145,9 @@ def create_team_features(df: pd.DataFrame) -> pd.DataFrame:
     for col in team_cols:
         df[col] = 0.0
 
+    # process by race to avoid intra-race leakage
+    df = df.sort_values(['date', 'TeamName', 'DriverId']).reset_index(drop=True)
+
     for team in df['TeamName'].unique():
         team_mask = df['TeamName'] == team
         team_data = df[team_mask].copy()
@@ -159,9 +162,39 @@ def create_team_features(df: pd.DataFrame) -> pd.DataFrame:
         season_points = 0
         last_podium_idx = -1
         current_year = None
+        current_race = None
+        race_buffer = []  # buffer to collect all entries from same race
 
         for i, (idx, row) in enumerate(team_data.iterrows()):
-            # reset season stats on new year
+            # check if we've moved to a new race - if so, process buffered entries
+            race_key = (row['year'], row['round'])
+            if race_key != current_race:
+                # process previous race's buffered entries (only if same year)
+                for buffered_row in race_buffer:
+                    # only add to history if same year (don't let last year leak into this year)
+                    if buffered_row['year'] == current_year:
+                        b_pos = buffered_row['Position']
+                        season_finishes.append(b_pos)
+
+                        if b_pos == 1:
+                            season_wins += 1
+                        if b_pos <= 3:
+                            season_podiums += 1
+                            last_podium_idx = len(finishes) - 1
+                        season_points += buffered_row['Points']
+
+                    # always add to rolling history regardless of year
+                    b_pos = buffered_row['Position']
+                    finishes.append(b_pos)
+                    grids.append(buffered_row['GridPosition'])
+                    points_list.append(buffered_row['Points'])
+                    pos_changes.append(buffered_row['position_change'])
+                    dnfs.append(1 if buffered_row['is_dnf'] else 0)
+
+                race_buffer = []
+                current_race = race_key
+
+            # reset season stats on new year (after processing buffer)
             if row['year'] != current_year:
                 current_year = row['year']
                 season_wins = 0
@@ -227,20 +260,17 @@ def create_team_features(df: pd.DataFrame) -> pd.DataFrame:
                 season_avg = np.mean(finishes)
                 df.loc[idx, 'team_momentum'] = season_avg - recent_avg  # positive = improving
 
-            # update history with current race
-            finishes.append(row['Position'])
-            grids.append(row['GridPosition'])
-            points_list.append(row['Points'])
-            pos_changes.append(row['position_change'])
-            dnfs.append(1 if row['is_dnf'] else 0)
-            season_finishes.append(row['Position'])
+            # buffer current race entry (will be processed when we move to next race)
+            race_buffer.append(row)
 
-            if row['Position'] == 1:
-                season_wins += 1
-            if row['Position'] <= 3:
-                season_podiums += 1
-                last_podium_idx = i
-            season_points += row['Points']
+        # process final race buffer
+        for buffered_row in race_buffer:
+            b_pos = buffered_row['Position']
+            finishes.append(b_pos)
+            grids.append(buffered_row['GridPosition'])
+            points_list.append(buffered_row['Points'])
+            pos_changes.append(buffered_row['position_change'])
+            dnfs.append(1 if buffered_row['is_dnf'] else 0)
 
     # relative to field average
     for year in df['year'].unique():
@@ -323,10 +353,12 @@ def create_driver_features(df: pd.DataFrame) -> pd.DataFrame:
     # initialize driver columns
     driver_cols = [
         'driver_career_races', 'driver_career_wins', 'driver_career_podiums',
-        'is_rookie', 'is_veteran', 'driver_races_at_circuit', 'driver_avg_finish_at_circuit',
-        'driver_best_finish_at_circuit', 'driver_avg_finish_last_5', 'driver_avg_position_change_5',
+        'driver_years_experience', 'is_rookie', 'is_veteran',
+        'driver_races_at_circuit', 'driver_avg_finish_at_circuit',
+        'driver_best_finish_at_circuit', 'is_circuit_specialist',
+        'driver_avg_finish_last_5', 'driver_avg_position_change_5',
         'driver_points_last_5', 'driver_best_finish_last_5', 'driver_consistency_last_5',
-        'driver_momentum', 'driver_points_season', 'driver_avg_grid_season',
+        'driver_momentum', 'driver_hot_streak', 'driver_points_season', 'driver_avg_grid_season',
         'driver_avg_finish_season', 'driver_vs_teammate', 'driver_vs_car_potential'
     ]
 
@@ -340,10 +372,12 @@ def create_driver_features(df: pd.DataFrame) -> pd.DataFrame:
         career_races = 0
         career_wins = 0
         career_podiums = 0
+        seasons_seen = set()
         circuit_history = {}  # circuit -> list of finishes
         recent_finishes = []
         recent_pos_changes = []
         recent_points = []
+        consecutive_points = 0
         season_points = 0
         season_grids = []
         season_finishes = []
@@ -363,18 +397,28 @@ def create_driver_features(df: pd.DataFrame) -> pd.DataFrame:
             df.loc[idx, 'driver_career_races'] = career_races
             df.loc[idx, 'driver_career_wins'] = career_wins
             df.loc[idx, 'driver_career_podiums'] = career_podiums
+            df.loc[idx, 'driver_years_experience'] = len(seasons_seen)
             df.loc[idx, 'is_rookie'] = 1 if career_races < 20 else 0
             df.loc[idx, 'is_veteran'] = 1 if career_races > 100 else 0
 
             # circuit specific history
             if circuit in circuit_history and len(circuit_history[circuit]) > 0:
+                circuit_avg = np.mean(circuit_history[circuit])
                 df.loc[idx, 'driver_races_at_circuit'] = len(circuit_history[circuit])
-                df.loc[idx, 'driver_avg_finish_at_circuit'] = np.mean(circuit_history[circuit])
+                df.loc[idx, 'driver_avg_finish_at_circuit'] = circuit_avg
                 df.loc[idx, 'driver_best_finish_at_circuit'] = min(circuit_history[circuit])
+
+                # circuit specialist: significantly better here than overall
+                overall_avg = np.mean(recent_finishes) if recent_finishes else 10.0
+                df.loc[idx, 'is_circuit_specialist'] = 1 if (overall_avg - circuit_avg) > 2 else 0
             else:
                 df.loc[idx, 'driver_races_at_circuit'] = 0
                 df.loc[idx, 'driver_avg_finish_at_circuit'] = 10.0
                 df.loc[idx, 'driver_best_finish_at_circuit'] = 20.0
+                df.loc[idx, 'is_circuit_specialist'] = 0
+
+            # hot streak (consecutive points finishes)
+            df.loc[idx, 'driver_hot_streak'] = consecutive_points
 
             # recent form (last 5)
             if len(recent_finishes) >= 5:
@@ -408,10 +452,18 @@ def create_driver_features(df: pd.DataFrame) -> pd.DataFrame:
 
             # update history
             career_races += 1
+            seasons_seen.add(row['year'])
+
             if row['Position'] == 1:
                 career_wins += 1
             if row['Position'] <= 3:
                 career_podiums += 1
+
+            # update hot streak
+            if row['Position'] <= 10:
+                consecutive_points += 1
+            else:
+                consecutive_points = 0
 
             if circuit not in circuit_history:
                 circuit_history[circuit] = []
@@ -424,14 +476,58 @@ def create_driver_features(df: pd.DataFrame) -> pd.DataFrame:
             season_grids.append(row['GridPosition'])
             season_finishes.append(row['Position'])
 
-    # calculate vs teammate (requires second pass)
+    # calculate vs teammate and teammate comparison features (requires second pass)
     df['driver_vs_teammate'] = 0.0
-    for (team, year, race), group in df.groupby(['TeamName', 'year', 'round']):
+    df['teammate_avg_grid_diff'] = 0.0
+    df['teammate_avg_finish_diff'] = 0.0
+    df['is_team_leader'] = 0
+
+    # track teammate history for rolling comparisons
+    teammate_grid_history = {}  # (team, year) -> {driver: [grids]}
+    teammate_finish_history = {}  # (team, year) -> {driver: [finishes]}
+
+    df_sorted = df.sort_values(['year', 'round']).reset_index(drop=True)
+
+    for (team, year, race), group in df_sorted.groupby(['TeamName', 'year', 'round']):
         if len(group) == 2:
+            drivers = group['DriverId'].values
             positions = group['Position'].values
+            grids = group['GridPosition'].values
             indices = group.index.values
+
+            # current race comparison
             df.loc[indices[0], 'driver_vs_teammate'] = positions[1] - positions[0]
             df.loc[indices[1], 'driver_vs_teammate'] = positions[0] - positions[1]
+
+            # rolling teammate comparison
+            key = (team, year)
+            if key not in teammate_grid_history:
+                teammate_grid_history[key] = {drivers[0]: [], drivers[1]: []}
+                teammate_finish_history[key] = {drivers[0]: [], drivers[1]: []}
+
+            for i, driver in enumerate(drivers):
+                other = drivers[1 - i]
+                idx = indices[i]
+
+                # calculate average difference from past races
+                my_grids = teammate_grid_history[key].get(driver, [])
+                other_grids = teammate_grid_history[key].get(other, [])
+                my_finishes = teammate_finish_history[key].get(driver, [])
+                other_finishes = teammate_finish_history[key].get(other, [])
+
+                if my_grids and other_grids:
+                    df.loc[idx, 'teammate_avg_grid_diff'] = np.mean(my_grids) - np.mean(other_grids)
+                    df.loc[idx, 'teammate_avg_finish_diff'] = np.mean(my_finishes) - np.mean(other_finishes)
+                    # team leader has better average grid
+                    df.loc[idx, 'is_team_leader'] = 1 if np.mean(my_grids) < np.mean(other_grids) else 0
+
+            # update history after calculating
+            for i, driver in enumerate(drivers):
+                if driver not in teammate_grid_history[key]:
+                    teammate_grid_history[key][driver] = []
+                    teammate_finish_history[key][driver] = []
+                teammate_grid_history[key][driver].append(grids[i])
+                teammate_finish_history[key][driver].append(positions[i])
 
     # driver vs car potential (driver finish vs team average finish)
     for idx, row in df.iterrows():
@@ -684,6 +780,145 @@ def create_feature_summary(df: pd.DataFrame, output_path: str = 'data/processed/
     return summary_df
 
 
+def validate_no_leakage(df: pd.DataFrame) -> dict:
+    """
+    Validate that no data leakage exists in features.
+
+    Checks that rolling/cumulative features only use past data.
+    Returns dict with validation results.
+    """
+    results = {
+        'passed': True,
+        'issues': []
+    }
+
+    # check first race of each season for each team
+    # Season stats should be zero at start of season (team_wins_season, team_points_total are season-specific)
+    # But rolling stats (last 5 races) can carry over from previous season - that's expected
+    for year in df['year'].unique():
+        year_data = df[df['year'] == year]
+        first_round = year_data['round'].min()
+        first_race = year_data[year_data['round'] == first_round]
+
+        for team in first_race['TeamName'].unique():
+            team_first = first_race[first_race['TeamName'] == team]
+
+            for idx, row in team_first.iterrows():
+                # first race of season should have zero season-specific stats
+                # (wins, points accumulated in CURRENT season only)
+                # Rolling stats from last 5 races can carry from previous season - that's fine
+                if row['team_wins_season'] > 0:
+                    results['passed'] = False
+                    results['issues'].append(f"Team {team} in {year} R{first_round}: has {row['team_wins_season']} season wins at first race")
+
+                if row['team_points_total'] > 0:
+                    results['passed'] = False
+                    results['issues'].append(f"Team {team} in {year} R{first_round}: has {row['team_points_total']} season points at first race")
+
+    # check that driver career races increases over time
+    for driver in df['DriverId'].unique():
+        driver_data = df[df['DriverId'] == driver].sort_values('date')
+        career_races = driver_data['driver_career_races'].values
+
+        for i in range(1, len(career_races)):
+            if career_races[i] < career_races[i-1]:
+                results['passed'] = False
+                results['issues'].append(f"Driver {driver} career races decreased")
+                break
+
+    return results
+
+
+def test_edge_cases(df: pd.DataFrame) -> dict:
+    """
+    Test edge cases in the data.
+
+    Validates handling of:
+    - First race of season
+    - Rookie's first race
+    - First race at new circuit
+    - Teams with only one driver
+    """
+    results = {
+        'first_race_season': {'tested': 0, 'passed': 0},
+        'rookie_first_race': {'tested': 0, 'passed': 0},
+        'first_at_circuit': {'tested': 0, 'passed': 0},
+        'single_driver_team': {'tested': 0, 'passed': 0}
+    }
+
+    # test first race of season
+    for year in df['year'].unique():
+        year_data = df[df['year'] == year]
+        first_round = year_data['round'].min()
+        first_race = year_data[year_data['round'] == first_round]
+
+        for idx, row in first_race.iterrows():
+            results['first_race_season']['tested'] += 1
+
+            # should have reasonable defaults, not NaN
+            if pd.notna(row['team_avg_finish_last_5']) and pd.notna(row['driver_avg_finish_last_5']):
+                results['first_race_season']['passed'] += 1
+
+    # test rookie first races
+    rookies = df[df['driver_career_races'] == 0]
+    for idx, row in rookies.iterrows():
+        results['rookie_first_race']['tested'] += 1
+
+        if row['is_rookie'] == 1 and pd.notna(row['driver_avg_finish_last_5']):
+            results['rookie_first_race']['passed'] += 1
+
+    # test first at circuit
+    first_at_circuit = df[df['driver_races_at_circuit'] == 0]
+    for idx, row in first_at_circuit.iterrows():
+        results['first_at_circuit']['tested'] += 1
+
+        if pd.notna(row['driver_avg_finish_at_circuit']):
+            results['first_at_circuit']['passed'] += 1
+
+    # test teams with potentially one driver (check for sensible teammate features)
+    for (team, year, race), group in df.groupby(['TeamName', 'year', 'round']):
+        if len(group) == 1:
+            results['single_driver_team']['tested'] += 1
+            row = group.iloc[0]
+
+            # should have default values, not errors
+            if row['driver_vs_teammate'] == 0:
+                results['single_driver_team']['passed'] += 1
+
+    return results
+
+
+def run_validation(df: pd.DataFrame) -> None:
+    """
+    Run all validation checks and print results.
+    """
+    print("\n" + "=" * 50)
+    print("Running validation checks...")
+    print("=" * 50)
+
+    # check for data leakage
+    leakage = validate_no_leakage(df)
+    if leakage['passed']:
+        print("✓ No data leakage detected")
+    else:
+        print("✗ Data leakage issues found:")
+        for issue in leakage['issues'][:5]:
+            print(f"  - {issue}")
+
+    # test edge cases
+    edge = test_edge_cases(df)
+    print("\nEdge case tests:")
+    for test_name, result in edge.items():
+        if result['tested'] > 0:
+            pct = result['passed'] / result['tested'] * 100
+            status = "✓" if pct >= 90 else "✗"
+            print(f"  {status} {test_name}: {result['passed']}/{result['tested']} ({pct:.1f}%)")
+        else:
+            print(f"  - {test_name}: No cases to test")
+
+    print("=" * 50 + "\n")
+
+
 def create_all_features(race_data_path: str = 'data/processed/processed_race_data.csv',
                         circuit_info_path: str = 'data/raw/circuit_info.csv',
                         output_path: str = 'data/processed/race_data_with_features.csv') -> pd.DataFrame:
@@ -736,6 +971,9 @@ def create_all_features(race_data_path: str = 'data/processed/processed_race_dat
     # generate feature summary
     print("Generating feature summary...")
     create_feature_summary(final_data)
+
+    # run validation
+    run_validation(final_data)
 
     print(f"Done! Created {len(final_data.columns)} features for {len(final_data)} records")
 
