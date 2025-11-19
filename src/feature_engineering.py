@@ -124,42 +124,129 @@ def create_grid_position_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def create_team_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculate team performance features.
+    Calculate comprehensive team performance features.
 
-    Includes season averages, performance delta, and reliability metrics.
-    Uses cumulative stats to avoid data leakage.
+    Includes rolling metrics, season stats, reliability, and relative performance.
+    Uses only past data to avoid leakage.
     """
     df = df.copy()
-    df = df.sort_values(['year', 'round', 'TeamName']).reset_index(drop=True)
+    df = df.sort_values(['date', 'TeamName']).reset_index(drop=True)
 
-    # group by team and year for season stats
-    team_season_stats = []
+    # initialize all team feature columns
+    team_cols = [
+        'team_avg_finish_last_5', 'team_avg_finish_last_3', 'team_avg_grid_last_5',
+        'team_best_finish_last_5', 'team_worst_finish_last_5', 'team_points_last_5',
+        'team_position_change_avg_5', 'team_dnf_rate_last_10', 'team_completion_rate_season',
+        'team_wins_season', 'team_podiums_season', 'team_points_total',
+        'team_races_since_podium', 'team_vs_average_grid', 'team_momentum',
+        'team_consistency', 'team_avg_grid', 'team_avg_finish', 'team_performance_delta'
+    ]
 
-    for (team, year), group in df.groupby(['TeamName', 'year']):
-        group = group.sort_values('round')
+    for col in team_cols:
+        df[col] = 0.0
 
-        # cumulative averages (only using past races)
-        cum_grid = group['GridPosition'].expanding().mean().shift(1)
-        cum_finish = group['Position'].expanding().mean().shift(1)
-        cum_dnf_rate = group['is_dnf'].expanding().mean().shift(1) * 100
+    for team in df['TeamName'].unique():
+        team_mask = df['TeamName'] == team
+        team_data = df[team_mask].copy()
 
-        # performance delta (positive = gaining positions on average)
-        cum_delta = cum_grid - cum_finish
+        finishes = []
+        grids = []
+        points_list = []
+        pos_changes = []
+        dnfs = []
+        season_wins = 0
+        season_podiums = 0
+        season_points = 0
+        last_podium_idx = -1
+        current_year = None
 
-        for idx, row in group.iterrows():
-            race_num = row['round']
-            team_season_stats.append({
-                'idx': idx,
-                'team_avg_grid': cum_grid.loc[idx] if not pd.isna(cum_grid.loc[idx]) else row['GridPosition'],
-                'team_avg_finish': cum_finish.loc[idx] if not pd.isna(cum_finish.loc[idx]) else row['Position'],
-                'team_performance_delta': cum_delta.loc[idx] if not pd.isna(cum_delta.loc[idx]) else 0,
-                'team_dnf_rate': cum_dnf_rate.loc[idx] if not pd.isna(cum_dnf_rate.loc[idx]) else 0
-            })
+        for i, (idx, row) in enumerate(team_data.iterrows()):
+            # reset season stats on new year
+            if row['year'] != current_year:
+                current_year = row['year']
+                season_wins = 0
+                season_podiums = 0
+                season_points = 0
+                season_finishes = []
 
-    team_df = pd.DataFrame(team_season_stats).set_index('idx')
+            # rolling metrics from past races
+            if len(finishes) >= 5:
+                df.loc[idx, 'team_avg_finish_last_5'] = np.mean(finishes[-5:])
+                df.loc[idx, 'team_avg_grid_last_5'] = np.mean(grids[-5:])
+                df.loc[idx, 'team_best_finish_last_5'] = min(finishes[-5:])
+                df.loc[idx, 'team_worst_finish_last_5'] = max(finishes[-5:])
+                df.loc[idx, 'team_points_last_5'] = sum(points_list[-5:])
+                df.loc[idx, 'team_position_change_avg_5'] = np.mean(pos_changes[-5:])
+                df.loc[idx, 'team_consistency'] = np.std(finishes[-5:])
+            elif len(finishes) >= 3:
+                df.loc[idx, 'team_avg_finish_last_5'] = np.mean(finishes)
+                df.loc[idx, 'team_avg_grid_last_5'] = np.mean(grids)
+                df.loc[idx, 'team_best_finish_last_5'] = min(finishes)
+                df.loc[idx, 'team_worst_finish_last_5'] = max(finishes)
+                df.loc[idx, 'team_points_last_5'] = sum(points_list)
+                df.loc[idx, 'team_position_change_avg_5'] = np.mean(pos_changes)
+                df.loc[idx, 'team_consistency'] = np.std(finishes) if len(finishes) > 1 else 0
+            else:
+                # default for first races
+                df.loc[idx, 'team_avg_finish_last_5'] = 10.0
+                df.loc[idx, 'team_avg_grid_last_5'] = 10.0
+                df.loc[idx, 'team_best_finish_last_5'] = 10.0
+                df.loc[idx, 'team_worst_finish_last_5'] = 10.0
 
-    for col in ['team_avg_grid', 'team_avg_finish', 'team_performance_delta', 'team_dnf_rate']:
-        df[col] = team_df[col]
+            if len(finishes) >= 3:
+                df.loc[idx, 'team_avg_finish_last_3'] = np.mean(finishes[-3:])
+            else:
+                df.loc[idx, 'team_avg_finish_last_3'] = np.mean(finishes) if finishes else 10.0
+
+            # dnf rate from last 10
+            if len(dnfs) >= 10:
+                df.loc[idx, 'team_dnf_rate_last_10'] = np.mean(dnfs[-10:]) * 100
+            elif dnfs:
+                df.loc[idx, 'team_dnf_rate_last_10'] = np.mean(dnfs) * 100
+
+            # season stats
+            df.loc[idx, 'team_wins_season'] = season_wins
+            df.loc[idx, 'team_podiums_season'] = season_podiums
+            df.loc[idx, 'team_points_total'] = season_points
+
+            if len(season_finishes) > 0:
+                df.loc[idx, 'team_completion_rate_season'] = (1 - np.mean([1 if f > 20 else 0 for f in season_finishes])) * 100
+                df.loc[idx, 'team_avg_grid'] = np.mean(grids[-len(season_finishes):]) if grids else 10.0
+                df.loc[idx, 'team_avg_finish'] = np.mean(season_finishes)
+                df.loc[idx, 'team_performance_delta'] = df.loc[idx, 'team_avg_grid'] - df.loc[idx, 'team_avg_finish']
+
+            # races since last podium
+            if last_podium_idx >= 0:
+                df.loc[idx, 'team_races_since_podium'] = i - last_podium_idx
+            else:
+                df.loc[idx, 'team_races_since_podium'] = i
+
+            # momentum: compare last 3 to season average
+            if len(finishes) >= 5:
+                recent_avg = np.mean(finishes[-3:])
+                season_avg = np.mean(finishes)
+                df.loc[idx, 'team_momentum'] = season_avg - recent_avg  # positive = improving
+
+            # update history with current race
+            finishes.append(row['Position'])
+            grids.append(row['GridPosition'])
+            points_list.append(row['Points'])
+            pos_changes.append(row['position_change'])
+            dnfs.append(1 if row['is_dnf'] else 0)
+            season_finishes.append(row['Position'])
+
+            if row['Position'] == 1:
+                season_wins += 1
+            if row['Position'] <= 3:
+                season_podiums += 1
+                last_podium_idx = i
+            season_points += row['Points']
+
+    # relative to field average
+    for year in df['year'].unique():
+        year_mask = df['year'] == year
+        field_avg_grid = df.loc[year_mask, 'GridPosition'].mean()
+        df.loc[year_mask, 'team_vs_average_grid'] = df.loc[year_mask, 'team_avg_grid'] - field_avg_grid
 
     return df
 
@@ -224,46 +311,225 @@ def create_team_rolling_features(df: pd.DataFrame, windows: list = [3, 5]) -> pd
     return df
 
 
+def create_driver_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate driver-specific performance features.
+
+    Includes experience, circuit specialization, recent form, and relative metrics.
+    """
+    df = df.copy()
+    df = df.sort_values(['date', 'DriverId']).reset_index(drop=True)
+
+    # initialize driver columns
+    driver_cols = [
+        'driver_career_races', 'driver_career_wins', 'driver_career_podiums',
+        'is_rookie', 'is_veteran', 'driver_races_at_circuit', 'driver_avg_finish_at_circuit',
+        'driver_best_finish_at_circuit', 'driver_avg_finish_last_5', 'driver_avg_position_change_5',
+        'driver_points_last_5', 'driver_best_finish_last_5', 'driver_consistency_last_5',
+        'driver_momentum', 'driver_points_season', 'driver_avg_grid_season',
+        'driver_avg_finish_season', 'driver_vs_teammate', 'driver_vs_car_potential'
+    ]
+
+    for col in driver_cols:
+        df[col] = 0.0
+
+    for driver in df['DriverId'].unique():
+        driver_mask = df['DriverId'] == driver
+        driver_data = df[driver_mask].copy()
+
+        career_races = 0
+        career_wins = 0
+        career_podiums = 0
+        circuit_history = {}  # circuit -> list of finishes
+        recent_finishes = []
+        recent_pos_changes = []
+        recent_points = []
+        season_points = 0
+        season_grids = []
+        season_finishes = []
+        current_year = None
+
+        for i, (idx, row) in enumerate(driver_data.iterrows()):
+            circuit = row['circuit']
+
+            # reset season stats
+            if row['year'] != current_year:
+                current_year = row['year']
+                season_points = 0
+                season_grids = []
+                season_finishes = []
+
+            # career stats (at time of race)
+            df.loc[idx, 'driver_career_races'] = career_races
+            df.loc[idx, 'driver_career_wins'] = career_wins
+            df.loc[idx, 'driver_career_podiums'] = career_podiums
+            df.loc[idx, 'is_rookie'] = 1 if career_races < 20 else 0
+            df.loc[idx, 'is_veteran'] = 1 if career_races > 100 else 0
+
+            # circuit specific history
+            if circuit in circuit_history and len(circuit_history[circuit]) > 0:
+                df.loc[idx, 'driver_races_at_circuit'] = len(circuit_history[circuit])
+                df.loc[idx, 'driver_avg_finish_at_circuit'] = np.mean(circuit_history[circuit])
+                df.loc[idx, 'driver_best_finish_at_circuit'] = min(circuit_history[circuit])
+            else:
+                df.loc[idx, 'driver_races_at_circuit'] = 0
+                df.loc[idx, 'driver_avg_finish_at_circuit'] = 10.0
+                df.loc[idx, 'driver_best_finish_at_circuit'] = 20.0
+
+            # recent form (last 5)
+            if len(recent_finishes) >= 5:
+                df.loc[idx, 'driver_avg_finish_last_5'] = np.mean(recent_finishes[-5:])
+                df.loc[idx, 'driver_avg_position_change_5'] = np.mean(recent_pos_changes[-5:])
+                df.loc[idx, 'driver_points_last_5'] = sum(recent_points[-5:])
+                df.loc[idx, 'driver_best_finish_last_5'] = min(recent_finishes[-5:])
+                df.loc[idx, 'driver_consistency_last_5'] = np.std(recent_finishes[-5:])
+            elif len(recent_finishes) > 0:
+                df.loc[idx, 'driver_avg_finish_last_5'] = np.mean(recent_finishes)
+                df.loc[idx, 'driver_avg_position_change_5'] = np.mean(recent_pos_changes)
+                df.loc[idx, 'driver_points_last_5'] = sum(recent_points)
+                df.loc[idx, 'driver_best_finish_last_5'] = min(recent_finishes)
+                df.loc[idx, 'driver_consistency_last_5'] = np.std(recent_finishes) if len(recent_finishes) > 1 else 0
+            else:
+                df.loc[idx, 'driver_avg_finish_last_5'] = 10.0
+                df.loc[idx, 'driver_best_finish_last_5'] = 10.0
+
+            # momentum
+            if len(recent_finishes) >= 5:
+                recent_avg = np.mean(recent_finishes[-3:])
+                overall_avg = np.mean(recent_finishes)
+                df.loc[idx, 'driver_momentum'] = overall_avg - recent_avg
+
+            # season stats
+            df.loc[idx, 'driver_points_season'] = season_points
+            if season_grids:
+                df.loc[idx, 'driver_avg_grid_season'] = np.mean(season_grids)
+            if season_finishes:
+                df.loc[idx, 'driver_avg_finish_season'] = np.mean(season_finishes)
+
+            # update history
+            career_races += 1
+            if row['Position'] == 1:
+                career_wins += 1
+            if row['Position'] <= 3:
+                career_podiums += 1
+
+            if circuit not in circuit_history:
+                circuit_history[circuit] = []
+            circuit_history[circuit].append(row['Position'])
+
+            recent_finishes.append(row['Position'])
+            recent_pos_changes.append(row['position_change'])
+            recent_points.append(row['Points'])
+            season_points += row['Points']
+            season_grids.append(row['GridPosition'])
+            season_finishes.append(row['Position'])
+
+    # calculate vs teammate (requires second pass)
+    df['driver_vs_teammate'] = 0.0
+    for (team, year, race), group in df.groupby(['TeamName', 'year', 'round']):
+        if len(group) == 2:
+            positions = group['Position'].values
+            indices = group.index.values
+            df.loc[indices[0], 'driver_vs_teammate'] = positions[1] - positions[0]
+            df.loc[indices[1], 'driver_vs_teammate'] = positions[0] - positions[1]
+
+    # driver vs car potential (driver finish vs team average finish)
+    for idx, row in df.iterrows():
+        team_avg = df.loc[idx, 'team_avg_finish']
+        if team_avg > 0:
+            df.loc[idx, 'driver_vs_car_potential'] = team_avg - row['Position']
+
+    return df
+
+
 def create_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Create time-based features.
 
-    Includes race number in season, season progress, and era indicators.
+    Includes race number, season progress, era indicators, and championship context.
     """
     df = df.copy()
 
-    # race number in season (already have 'round')
+    # race number in season
     df['race_number'] = df['round']
 
     # season progress (0-1 scale)
     max_rounds = df.groupby('year')['round'].transform('max')
     df['season_progress'] = df['round'] / max_rounds
+    df['races_remaining'] = max_rounds - df['round']
 
     # era indicator (2022 regulation change)
     df['post_2022'] = (df['year'] >= 2022).astype(int)
+    df['years_into_regulations'] = df['year'].apply(lambda x: x - 2022 if x >= 2022 else x - 2017)
 
-    # early/mid/late season
+    # season phase indicators
+    df['is_season_opener'] = (df['round'] == 1).astype(int)
+    df['is_season_finale'] = (df['round'] == max_rounds).astype(int)
     df['early_season'] = (df['season_progress'] <= 0.33).astype(int)
     df['mid_season'] = ((df['season_progress'] > 0.33) & (df['season_progress'] <= 0.66)).astype(int)
     df['late_season'] = (df['season_progress'] > 0.66).astype(int)
+
+    # covid affected seasons
+    df['covid_affected'] = df['year'].isin([2020, 2021]).astype(int)
+
+    # championship context
+    df['championship_gap_leader'] = 0.0
+    df['driver_in_contention'] = 0
+
+    for year in df['year'].unique():
+        year_mask = df['year'] == year
+        year_data = df[year_mask].copy()
+
+        for race_round in year_data['round'].unique():
+            round_mask = (df['year'] == year) & (df['round'] == race_round)
+
+            # get points up to previous race
+            prev_races = df[(df['year'] == year) & (df['round'] < race_round)]
+
+            if len(prev_races) > 0:
+                driver_points = prev_races.groupby('DriverId')['Points'].sum()
+                leader_points = driver_points.max() if len(driver_points) > 0 else 0
+
+                for idx in df[round_mask].index:
+                    driver = df.loc[idx, 'DriverId']
+                    current_points = driver_points.get(driver, 0)
+                    gap = leader_points - current_points
+                    df.loc[idx, 'championship_gap_leader'] = gap
+
+                    # in contention if within 50 points (about 2 race wins)
+                    races_left = df.loc[idx, 'races_remaining']
+                    max_possible = races_left * 25
+                    df.loc[idx, 'driver_in_contention'] = 1 if gap <= max_possible else 0
 
     return df
 
 
 def create_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Create interaction terms between key features.
+    Create sophisticated interaction terms between key features.
 
-    These capture non-linear relationships that tree models might miss.
+    Captures grid × circuit, team × circuit, driver × conditions relationships.
     """
     df = df.copy()
 
-    # grid position interactions
+    # grid × circuit interactions
     if 'overtaking_difficulty_index' in df.columns:
         df['grid_x_overtaking'] = df['GridPosition'] * df['overtaking_difficulty_index']
 
-    if 'team_performance_delta' in df.columns:
-        df['grid_x_team_delta'] = df['GridPosition'] * df['team_performance_delta']
+    if 'circuit_pole_win_rate' in df.columns:
+        df['grid_x_pole_win_rate'] = df['GridPosition'] * df['circuit_pole_win_rate'] / 100
+
+    if 'circuit_var_pos_change' in df.columns:
+        # midfield advantage at chaotic circuits
+        df['midfield_x_variance'] = ((df['GridPosition'] > 5) & (df['GridPosition'] <= 15)).astype(int) * df['circuit_var_pos_change']
+
+        # back of grid at high variance circuits
+        df['back_x_variance'] = (df['GridPosition'] > 15).astype(int) * df['circuit_var_pos_change']
+
+    # pole/front row at processional tracks
+    if 'circuit_correlation' in df.columns:
+        df['frontrow_x_correlation'] = df['front_row'] * df['circuit_correlation']
+        df['pole_at_processional'] = ((df['GridPosition'] == 1) & (df['circuit_correlation'] > 0.8)).astype(int)
 
     # top 3 interactions with circuit type
     if 'is_street' in df.columns:
@@ -272,9 +538,42 @@ def create_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
     if 'high_downforce' in df.columns:
         df['top3_x_high_df'] = df['top_three'] * df['high_downforce']
 
-    # front row advantage on processional tracks
-    if 'circuit_correlation' in df.columns:
-        df['frontrow_x_correlation'] = df['front_row'] * df['circuit_correlation']
+    if 'low_downforce' in df.columns:
+        df['grid_x_low_df'] = df['GridPosition'] * df['low_downforce']
+
+    # team × circuit interactions
+    if 'team_performance_delta' in df.columns:
+        df['grid_x_team_delta'] = df['GridPosition'] * df['team_performance_delta']
+
+    if 'team_momentum' in df.columns and 'circuit_var_pos_change' in df.columns:
+        df['momentum_x_variance'] = df['team_momentum'] * df['circuit_var_pos_change']
+
+    # team reliability at harsh circuits
+    if 'team_dnf_rate_last_10' in df.columns and 'circuit_dnf_rate' in df.columns:
+        df['reliability_x_circuit_dnf'] = df['team_dnf_rate_last_10'] * df['circuit_dnf_rate'] / 100
+
+    # driver experience interactions
+    if 'driver_career_races' in df.columns:
+        # veteran advantage at new circuits (less data for them)
+        if 'driver_races_at_circuit' in df.columns:
+            df['veteran_new_circuit'] = (df['driver_career_races'] > 100).astype(int) * (df['driver_races_at_circuit'] == 0).astype(int)
+
+        # experience matters more in chaotic conditions
+        if 'circuit_var_pos_change' in df.columns:
+            df['experience_x_chaos'] = df['driver_career_races'] * df['circuit_var_pos_change'] / 100
+
+    # form × context
+    if 'driver_momentum' in df.columns and 'driver_in_contention' in df.columns:
+        df['form_x_contention'] = df['driver_momentum'] * df['driver_in_contention']
+
+    # season phase interactions
+    if 'early_season' in df.columns:
+        # early season uncertainty (less predictable)
+        df['early_x_variance'] = df['early_season'] * df.get('circuit_var_pos_change', 0)
+
+    if 'late_season' in df.columns and 'driver_in_contention' in df.columns:
+        # pressure in late season title fight
+        df['late_contention_pressure'] = df['late_season'] * df['driver_in_contention']
 
     return df
 
@@ -311,6 +610,80 @@ def merge_features(race_data: pd.DataFrame,
     return merged
 
 
+def create_feature_summary(df: pd.DataFrame, output_path: str = 'data/processed/feature_summary.csv') -> pd.DataFrame:
+    """
+    Generate feature quality summary for documentation and selection.
+
+    Calculates correlation with target, missing %, variance, and categorizes features.
+    """
+    summary_data = []
+
+    # define feature categories
+    grid_features = ['GridPosition', 'grid_squared', 'grid_cubed', 'grid_log', 'grid_sqrt',
+                     'front_row', 'top_three', 'top_five', 'top_ten', 'back_half', 'grid_side_clean', 'grid_row']
+
+    team_features = [col for col in df.columns if col.startswith('team_')]
+    driver_features = [col for col in df.columns if col.startswith('driver_') or col in ['is_rookie', 'is_veteran']]
+    circuit_features = [col for col in df.columns if col.startswith('circuit_') or col.startswith('overtaking')]
+    temporal_features = ['race_number', 'season_progress', 'races_remaining', 'post_2022',
+                         'years_into_regulations', 'early_season', 'mid_season', 'late_season',
+                         'is_season_opener', 'is_season_finale', 'covid_affected',
+                         'championship_gap_leader', 'driver_in_contention']
+    interaction_features = [col for col in df.columns if '_x_' in col or 'pole_at_' in col or
+                           'veteran_new' in col or 'late_contention' in col]
+
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+
+    for col in numeric_cols:
+        if col in ['Position', 'DriverNumber', 'year', 'round', 'Laps']:
+            continue
+
+        # determine category
+        if col in grid_features:
+            category = 'grid'
+        elif col in team_features:
+            category = 'team'
+        elif col in driver_features:
+            category = 'driver'
+        elif col in circuit_features:
+            category = 'circuit'
+        elif col in temporal_features:
+            category = 'temporal'
+        elif col in interaction_features:
+            category = 'interaction'
+        else:
+            category = 'other'
+
+        # calculate metrics
+        missing_pct = df[col].isna().sum() / len(df) * 100
+        variance = df[col].var()
+
+        # correlation with target
+        valid_mask = df[col].notna() & df['Position'].notna()
+        if valid_mask.sum() > 10:
+            corr = df.loc[valid_mask, col].corr(df.loc[valid_mask, 'Position'])
+        else:
+            corr = np.nan
+
+        summary_data.append({
+            'feature_name': col,
+            'feature_type': category,
+            'missing_pct': round(missing_pct, 2),
+            'variance': round(variance, 4) if not np.isnan(variance) else 0,
+            'correlation_with_target': round(corr, 4) if not np.isnan(corr) else 0,
+            'abs_correlation': abs(corr) if not np.isnan(corr) else 0
+        })
+
+    summary_df = pd.DataFrame(summary_data)
+    summary_df = summary_df.sort_values('abs_correlation', ascending=False)
+
+    # save to csv
+    summary_df.to_csv(output_path, index=False)
+    print(f"Feature summary saved to {output_path}")
+
+    return summary_df
+
+
 def create_all_features(race_data_path: str = 'data/processed/processed_race_data.csv',
                         circuit_info_path: str = 'data/raw/circuit_info.csv',
                         output_path: str = 'data/processed/race_data_with_features.csv') -> pd.DataFrame:
@@ -340,6 +713,10 @@ def create_all_features(race_data_path: str = 'data/processed/processed_race_dat
     print("Creating team rolling features...")
     race_data = create_team_rolling_features(race_data)
 
+    # create driver features
+    print("Creating driver features...")
+    race_data = create_driver_features(race_data)
+
     # create temporal features
     print("Creating temporal features...")
     race_data = create_temporal_features(race_data)
@@ -356,6 +733,10 @@ def create_all_features(race_data_path: str = 'data/processed/processed_race_dat
     print(f"Saving to {output_path}...")
     final_data.to_csv(output_path, index=False)
 
+    # generate feature summary
+    print("Generating feature summary...")
+    create_feature_summary(final_data)
+
     print(f"Done! Created {len(final_data.columns)} features for {len(final_data)} records")
 
     return final_data
@@ -363,24 +744,29 @@ def create_all_features(race_data_path: str = 'data/processed/processed_race_dat
 
 if __name__ == '__main__':
     df = create_all_features()
-    print("\nFeature summary:")
+    print("\nFeature breakdown:")
     print(f"Total columns: {len(df.columns)}")
 
-    # count feature categories
-    grid_features = ['grid_squared', 'grid_cubed', 'grid_log', 'grid_sqrt', 'front_row',
-                     'top_three', 'top_five', 'top_ten', 'back_half', 'grid_side',
-                     'grid_side_clean', 'grid_row']
-    team_features = ['team_avg_grid', 'team_avg_finish', 'team_performance_delta',
-                     'team_dnf_rate', 'team_last3_avg_finish', 'team_last3_avg_change',
-                     'team_last5_avg_finish', 'team_last5_avg_change', 'team_form_trend']
-    temporal_features = ['race_number', 'season_progress', 'post_2022',
-                         'early_season', 'mid_season', 'late_season']
-    interaction_features = ['grid_x_overtaking', 'grid_x_team_delta', 'top3_x_street',
-                           'top3_x_high_df', 'frontrow_x_correlation']
+    # count by category
+    grid_count = len([c for c in df.columns if c.startswith('grid_') or c in ['front_row', 'top_three', 'top_five', 'top_ten', 'back_half']])
+    team_count = len([c for c in df.columns if c.startswith('team_')])
+    driver_count = len([c for c in df.columns if c.startswith('driver_') or c in ['is_rookie', 'is_veteran']])
+    circuit_count = len([c for c in df.columns if c.startswith('circuit_') or c.startswith('overtaking')])
+    temporal_count = len([c for c in df.columns if c in ['race_number', 'season_progress', 'races_remaining', 'post_2022',
+                                                          'years_into_regulations', 'early_season', 'mid_season', 'late_season',
+                                                          'is_season_opener', 'is_season_finale', 'covid_affected',
+                                                          'championship_gap_leader', 'driver_in_contention']])
+    interaction_count = len([c for c in df.columns if '_x_' in c or 'pole_at_' in c or 'veteran_new' in c or 'late_contention' in c])
 
-    print(f"Grid position features: {len(grid_features)}")
-    print(f"Team features: {len(team_features)}")
-    print(f"Temporal features: {len(temporal_features)}")
-    print(f"Interaction features: {len(interaction_features)}")
-    print(f"Circuit features: 10")
-    print(f"External circuit info: 12")
+    print(f"Grid position features: {grid_count}")
+    print(f"Team features: {team_count}")
+    print(f"Driver features: {driver_count}")
+    print(f"Circuit features: {circuit_count}")
+    print(f"Temporal features: {temporal_count}")
+    print(f"Interaction features: {interaction_count}")
+
+    # show top correlated features
+    summary = pd.read_csv('data/processed/feature_summary.csv')
+    print("\nTop 10 features by correlation with finish position:")
+    for _, row in summary.head(10).iterrows():
+        print(f"  {row['feature_name']}: {row['correlation_with_target']:.3f}")
