@@ -122,6 +122,163 @@ def create_grid_position_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def create_team_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate team performance features.
+
+    Includes season averages, performance delta, and reliability metrics.
+    Uses cumulative stats to avoid data leakage.
+    """
+    df = df.copy()
+    df = df.sort_values(['year', 'round', 'TeamName']).reset_index(drop=True)
+
+    # group by team and year for season stats
+    team_season_stats = []
+
+    for (team, year), group in df.groupby(['TeamName', 'year']):
+        group = group.sort_values('round')
+
+        # cumulative averages (only using past races)
+        cum_grid = group['GridPosition'].expanding().mean().shift(1)
+        cum_finish = group['Position'].expanding().mean().shift(1)
+        cum_dnf_rate = group['is_dnf'].expanding().mean().shift(1) * 100
+
+        # performance delta (positive = gaining positions on average)
+        cum_delta = cum_grid - cum_finish
+
+        for idx, row in group.iterrows():
+            race_num = row['round']
+            team_season_stats.append({
+                'idx': idx,
+                'team_avg_grid': cum_grid.loc[idx] if not pd.isna(cum_grid.loc[idx]) else row['GridPosition'],
+                'team_avg_finish': cum_finish.loc[idx] if not pd.isna(cum_finish.loc[idx]) else row['Position'],
+                'team_performance_delta': cum_delta.loc[idx] if not pd.isna(cum_delta.loc[idx]) else 0,
+                'team_dnf_rate': cum_dnf_rate.loc[idx] if not pd.isna(cum_dnf_rate.loc[idx]) else 0
+            })
+
+    team_df = pd.DataFrame(team_season_stats).set_index('idx')
+
+    for col in ['team_avg_grid', 'team_avg_finish', 'team_performance_delta', 'team_dnf_rate']:
+        df[col] = team_df[col]
+
+    return df
+
+
+def create_team_rolling_features(df: pd.DataFrame, windows: list = [3, 5]) -> pd.DataFrame:
+    """
+    Create rolling window features for team momentum.
+
+    Calculates last N race averages for finish position and position change.
+    """
+    df = df.copy()
+    df = df.sort_values(['TeamName', 'year', 'round']).reset_index(drop=True)
+
+    for window in windows:
+        finish_col = f'team_last{window}_avg_finish'
+        change_col = f'team_last{window}_avg_change'
+
+        df[finish_col] = np.nan
+        df[change_col] = np.nan
+
+        for team in df['TeamName'].unique():
+            team_mask = df['TeamName'] == team
+            team_data = df[team_mask].copy()
+
+            # rolling mean with shift to avoid leakage
+            rolling_finish = team_data['Position'].rolling(window=window, min_periods=1).mean().shift(1)
+            rolling_change = team_data['position_change'].rolling(window=window, min_periods=1).mean().shift(1)
+
+            df.loc[team_mask, finish_col] = rolling_finish.values
+            df.loc[team_mask, change_col] = rolling_change.values
+
+        # fill first race with season average or default
+        df[finish_col] = df[finish_col].fillna(df['Position'])
+        df[change_col] = df[change_col].fillna(0)
+
+    # team form trend (slope of last 5 finishes)
+    df['team_form_trend'] = 0.0
+
+    for team in df['TeamName'].unique():
+        team_mask = df['TeamName'] == team
+        team_data = df[team_mask].copy()
+
+        trends = []
+        positions = team_data['Position'].tolist()
+
+        for i in range(len(positions)):
+            if i < 2:
+                trends.append(0)
+            else:
+                # simple trend: compare last position to average of previous
+                window_size = min(5, i)
+                recent = positions[max(0, i-window_size):i]
+                if len(recent) >= 2:
+                    # negative trend = improving (lower positions are better)
+                    trend = (recent[-1] - recent[0]) / len(recent)
+                    trends.append(trend)
+                else:
+                    trends.append(0)
+
+        df.loc[team_mask, 'team_form_trend'] = trends
+
+    return df
+
+
+def create_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create time-based features.
+
+    Includes race number in season, season progress, and era indicators.
+    """
+    df = df.copy()
+
+    # race number in season (already have 'round')
+    df['race_number'] = df['round']
+
+    # season progress (0-1 scale)
+    max_rounds = df.groupby('year')['round'].transform('max')
+    df['season_progress'] = df['round'] / max_rounds
+
+    # era indicator (2022 regulation change)
+    df['post_2022'] = (df['year'] >= 2022).astype(int)
+
+    # early/mid/late season
+    df['early_season'] = (df['season_progress'] <= 0.33).astype(int)
+    df['mid_season'] = ((df['season_progress'] > 0.33) & (df['season_progress'] <= 0.66)).astype(int)
+    df['late_season'] = (df['season_progress'] > 0.66).astype(int)
+
+    return df
+
+
+def create_interaction_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create interaction terms between key features.
+
+    These capture non-linear relationships that tree models might miss.
+    """
+    df = df.copy()
+
+    # grid position interactions
+    if 'overtaking_difficulty_index' in df.columns:
+        df['grid_x_overtaking'] = df['GridPosition'] * df['overtaking_difficulty_index']
+
+    if 'team_performance_delta' in df.columns:
+        df['grid_x_team_delta'] = df['GridPosition'] * df['team_performance_delta']
+
+    # top 3 interactions with circuit type
+    if 'is_street' in df.columns:
+        df['top3_x_street'] = df['top_three'] * df['is_street']
+
+    if 'high_downforce' in df.columns:
+        df['top3_x_high_df'] = df['top_three'] * df['high_downforce']
+
+    # front row advantage on processional tracks
+    if 'circuit_correlation' in df.columns:
+        df['frontrow_x_correlation'] = df['front_row'] * df['circuit_correlation']
+
+    return df
+
+
 def load_circuit_info(filepath: str = 'data/raw/circuit_info.csv') -> pd.DataFrame:
     """
     Load external circuit characteristics data.
@@ -175,9 +332,25 @@ def create_all_features(race_data_path: str = 'data/processed/processed_race_dat
     print("Creating grid position features...")
     race_data = create_grid_position_features(race_data)
 
-    # merge everything
-    print("Merging features...")
+    # create team performance features
+    print("Creating team performance features...")
+    race_data = create_team_features(race_data)
+
+    # create team rolling/momentum features
+    print("Creating team rolling features...")
+    race_data = create_team_rolling_features(race_data)
+
+    # create temporal features
+    print("Creating temporal features...")
+    race_data = create_temporal_features(race_data)
+
+    # merge circuit features
+    print("Merging circuit features...")
     final_data = merge_features(race_data, circuit_features, circuit_info)
+
+    # create interaction features (after merge so we have all columns)
+    print("Creating interaction features...")
+    final_data = create_interaction_features(final_data)
 
     # save output
     print(f"Saving to {output_path}...")
@@ -192,6 +365,22 @@ if __name__ == '__main__':
     df = create_all_features()
     print("\nFeature summary:")
     print(f"Total columns: {len(df.columns)}")
-    print(f"New grid features: 12")
+
+    # count feature categories
+    grid_features = ['grid_squared', 'grid_cubed', 'grid_log', 'grid_sqrt', 'front_row',
+                     'top_three', 'top_five', 'top_ten', 'back_half', 'grid_side',
+                     'grid_side_clean', 'grid_row']
+    team_features = ['team_avg_grid', 'team_avg_finish', 'team_performance_delta',
+                     'team_dnf_rate', 'team_last3_avg_finish', 'team_last3_avg_change',
+                     'team_last5_avg_finish', 'team_last5_avg_change', 'team_form_trend']
+    temporal_features = ['race_number', 'season_progress', 'post_2022',
+                         'early_season', 'mid_season', 'late_season']
+    interaction_features = ['grid_x_overtaking', 'grid_x_team_delta', 'top3_x_street',
+                           'top3_x_high_df', 'frontrow_x_correlation']
+
+    print(f"Grid position features: {len(grid_features)}")
+    print(f"Team features: {len(team_features)}")
+    print(f"Temporal features: {len(temporal_features)}")
+    print(f"Interaction features: {len(interaction_features)}")
     print(f"Circuit features: 10")
     print(f"External circuit info: 12")
