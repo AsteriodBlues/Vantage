@@ -1,0 +1,22 @@
+circuit,track_length_km,num_turns,circuit_type,downforce_level,drs_zones,longest_straight_m,year_first_raced,altitude_m,typical_lap_time_s,direction
+Austin,5.513,20,permanent,high,2,1180,2012,233,96,anticlockwise
+Baku,6.003,20,street,low,2,2200,2016,28,103,anticlockwise
+Barcelona,4.675,16,permanent,high,2,1047,1991,130,78,clockwise
+Budapest,4.381,14,permanent,high,1,920,1986,264,77,clockwise
+Hockenheim,4.574,17,permanent,medium,2,900,1970,103,75,clockwise
+Le Castellet,5.842,15,permanent,high,2,1800,1971,420,92,clockwise
+Marina Bay,5.063,23,street,high,3,920,2008,5,98,anticlockwise
+Melbourne,5.278,14,street,medium,4,700,1996,7,80,clockwise
+Mexico City,4.304,17,permanent,low,3,1200,1962,2285,78,clockwise
+Monte Carlo,3.337,19,street,high,1,680,1929,30,72,clockwise
+Montréal,4.361,14,street,low,3,1000,1978,31,72,clockwise
+Monza,5.793,11,permanent,low,2,1200,1950,162,81,clockwise
+Sakhir,5.412,15,permanent,medium,3,1090,2004,12,91,clockwise
+São Paulo,4.309,15,permanent,medium,2,1200,1972,765,70,anticlockwise
+Shanghai,5.451,16,permanent,high,2,1170,2004,4,94,clockwise
+Silverstone,5.891,18,permanent,high,2,770,1950,153,88,clockwise
+Sochi,5.848,18,street,medium,2,650,2014,15,94,clockwise
+Spa-Francorchamps,7.004,19,permanent,medium,2,1925,1925,415,105,clockwise
+Spielberg,4.318,10,permanent,low,3,930,1970,678,65,clockwise
+Suzuka,5.807,18,permanent,high,1,1200,1987,45,90,clockwise
+Yas Marina,5.281,16,permanent,medium,2,1173,2009,5,84,anticlockwise
