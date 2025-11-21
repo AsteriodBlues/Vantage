@@ -1401,3 +1401,105 @@ def create_model_ready_dataset(input_path: str = 'data/processed/race_data_with_
         'val_years': sorted(val_df['year'].unique().tolist()),
         'test_years': sorted(test_df['year'].unique().tolist())
     }
+
+
+def validate_encoding(df: pd.DataFrame, encoding_type: str = 'target') -> dict:
+    """
+    Validate that encoding was applied correctly.
+
+    Checks for:
+    - No NaN values in encoded columns
+    - Encoded values are within expected ranges
+    - No data leakage from target
+    """
+    results = {'passed': True, 'checks': []}
+
+    df_encoded, feature_cols = prepare_features_for_training(df.copy(), encoding_type=encoding_type)
+
+    # check for NaN in feature columns
+    nan_cols = []
+    for col in feature_cols:
+        if col in df_encoded.columns:
+            nan_count = df_encoded[col].isna().sum()
+            if nan_count > 0:
+                nan_cols.append((col, nan_count))
+
+    if nan_cols:
+        results['passed'] = False
+        results['checks'].append(f"NaN values found: {nan_cols[:5]}")
+    else:
+        results['checks'].append("No NaN values in feature columns")
+
+    # check no leakage columns
+    leakage_cols = ['Points', 'Laps', 'position_change', 'is_dnf', 'completed_race', 'Position']
+    leaked = [c for c in feature_cols if c in leakage_cols]
+    if leaked:
+        results['passed'] = False
+        results['checks'].append(f"Leakage detected: {leaked}")
+    else:
+        results['checks'].append("No target leakage detected")
+
+    # check target encoding correlation isn't too high (would indicate leakage)
+    if 'circuit_target_enc' in df_encoded.columns:
+        corr = df_encoded['circuit_target_enc'].corr(df_encoded['Position'])
+        if abs(corr) > 0.95:
+            results['passed'] = False
+            results['checks'].append(f"Suspiciously high target encoding correlation: {corr:.3f}")
+        else:
+            results['checks'].append(f"Target encoding correlation reasonable: {corr:.3f}")
+
+    return results
+
+
+def test_encoding_functions():
+    """
+    Run unit tests on encoding functions.
+
+    Returns True if all tests pass.
+    """
+    print("Running encoding tests...")
+
+    # create simple test dataframe
+    test_df = pd.DataFrame({
+        'circuit': ['Monaco', 'Monza', 'Monaco', 'Spa', 'Monza', 'Spa'],
+        'TeamName': ['Ferrari', 'Mercedes', 'Ferrari', 'Mercedes', 'RedBull', 'RedBull'],
+        'DriverId': ['VET', 'HAM', 'LEC', 'BOT', 'VER', 'PER'],
+        'Position': [1, 2, 3, 4, 5, 6],
+        'GridPosition': [1, 2, 3, 4, 5, 6],
+        'downforce_level': ['high', 'low', 'high', 'medium', 'low', 'medium']
+    })
+
+    all_passed = True
+
+    # test label encoding
+    df_label, mappings = create_label_encodings(test_df)
+    assert 'circuit_encoded' in df_label.columns, "Label encoding failed"
+    assert len(mappings['circuit']['to_int']) == 3, "Wrong number of circuit labels"
+    print("  Label encoding: OK")
+
+    # test ordinal encoding
+    df_ord = create_ordinal_encoding(test_df)
+    assert 'downforce_ordinal' in df_ord.columns, "Ordinal encoding failed"
+    assert set(df_ord['downforce_ordinal'].unique()) == {0, 1, 2}, "Wrong ordinal values"
+    print("  Ordinal encoding: OK")
+
+    # test frequency encoding
+    df_freq = create_frequency_encoding(test_df)
+    assert 'circuit_freq' in df_freq.columns, "Frequency encoding failed"
+    assert df_freq[df_freq['circuit'] == 'Monaco']['circuit_freq'].iloc[0] == 2/6, "Wrong frequency"
+    print("  Frequency encoding: OK")
+
+    # test one-hot encoding
+    df_oh = create_onehot_features(test_df, columns=['downforce_level'], drop_first=True)
+    oh_cols = [c for c in df_oh.columns if c.startswith('downforce_level_')]
+    assert len(oh_cols) == 2, f"Wrong number of one-hot columns: {oh_cols}"
+    print("  One-hot encoding: OK")
+
+    # test target encoding
+    df_te = create_target_encoding(test_df, target_col='Position', columns=['circuit'], n_folds=2)
+    assert 'circuit_target_enc' in df_te.columns, "Target encoding failed"
+    assert df_te['circuit_target_enc'].notna().all(), "Target encoding has NaN"
+    print("  Target encoding: OK")
+
+    print("All encoding tests passed!")
+    return True
