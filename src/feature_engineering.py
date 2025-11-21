@@ -1008,3 +1008,196 @@ if __name__ == '__main__':
     print("\nTop 10 features by correlation with finish position:")
     for _, row in summary.head(10).iterrows():
         print(f"  {row['feature_name']}: {row['correlation_with_target']:.3f}")
+
+
+# =============================================================================
+# CATEGORICAL ENCODING FUNCTIONS
+# =============================================================================
+
+"""
+Encoding Strategy Decision Rationale:
+
+1. circuit (21 unique):
+   - One-hot: creates 21 columns, manageable
+   - Target encoding: useful for tree models, reduces dimensions
+   - Decision: implement both, let model selection decide
+
+2. TeamName/TeamId (12 unique):
+   - One-hot: only 12 columns, acceptable overhead
+   - Teams have strong predictive power for performance
+   - Decision: one-hot for linear models, label encoding for trees
+
+3. DriverId (26 unique):
+   - One-hot: 26 columns is borderline acceptable
+   - Driver skill already captured in driver_* features
+   - Decision: target encoding preferred, skip one-hot to avoid curse of dimensionality
+
+4. circuit_type (2 unique: permanent, street):
+   - Binary, simple one-hot (1 column after drop_first)
+   - Decision: one-hot encoding
+
+5. downforce_level (3 unique: high, medium, low):
+   - Ordinal nature (low < medium < high)
+   - Decision: ordinal encoding (0, 1, 2) AND one-hot for flexibility
+
+6. grid_side (2 unique: clean, dirty):
+   - Already binary encoded as grid_side_clean
+   - Decision: keep existing binary column
+"""
+
+
+def create_label_encodings(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """
+    Create label encodings for categorical variables.
+
+    Returns dataframe with encoded columns and mapping dict for inverse transform.
+    Useful for tree-based models that handle integers well.
+    """
+    df = df.copy()
+    label_mappings = {}
+
+    categorical_cols = ['circuit', 'TeamName', 'TeamId', 'DriverId']
+
+    for col in categorical_cols:
+        if col not in df.columns:
+            continue
+
+        unique_vals = sorted(df[col].dropna().unique())
+        mapping = {val: idx for idx, val in enumerate(unique_vals)}
+        inverse_mapping = {idx: val for val, idx in mapping.items()}
+
+        df[f'{col}_encoded'] = df[col].map(mapping)
+        label_mappings[col] = {
+            'to_int': mapping,
+            'to_label': inverse_mapping
+        }
+
+    return df, label_mappings
+
+
+def create_onehot_features(df: pd.DataFrame,
+                           columns: list = None,
+                           drop_first: bool = True) -> pd.DataFrame:
+    """
+    Create one-hot encoded features for specified categorical columns.
+
+    Default columns are those suitable for one-hot encoding:
+    - circuit: 21 values, captures track characteristics
+    - TeamName: 12 values, captures constructor performance
+    - circuit_type: 2 values
+    - downforce_level: 3 values
+
+    Skips DriverId by default (use target encoding instead).
+    """
+    df = df.copy()
+
+    if columns is None:
+        columns = ['circuit', 'TeamName', 'circuit_type', 'downforce_level']
+
+    # filter to columns that exist
+    columns = [c for c in columns if c in df.columns]
+
+    for col in columns:
+        dummies = pd.get_dummies(df[col], prefix=col, drop_first=drop_first)
+        df = pd.concat([df, dummies], axis=1)
+
+    return df
+
+
+def create_ordinal_encoding(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Create ordinal encodings for variables with natural ordering.
+
+    Currently handles:
+    - downforce_level: low=0, medium=1, high=2
+    """
+    df = df.copy()
+
+    # downforce level has natural ordering
+    if 'downforce_level' in df.columns:
+        downforce_order = {'low': 0, 'medium': 1, 'high': 2}
+        df['downforce_ordinal'] = df['downforce_level'].map(downforce_order)
+
+    return df
+
+
+def create_target_encoding(df: pd.DataFrame,
+                           target_col: str = 'Position',
+                           columns: list = None,
+                           n_folds: int = 5,
+                           smoothing: float = 10.0) -> pd.DataFrame:
+    """
+    Create target-encoded features using cross-validation to prevent leakage.
+
+    Each category is encoded as its mean target value, computed using
+    out-of-fold predictions to avoid overfitting.
+
+    Args:
+        df: input dataframe with target and categorical columns
+        target_col: name of target variable
+        columns: list of columns to encode (defaults to high-cardinality cats)
+        n_folds: number of CV folds for out-of-fold encoding
+        smoothing: regularization parameter (higher = more shrinkage to global mean)
+
+    The smoothing formula is:
+        encoded = (count * category_mean + smoothing * global_mean) / (count + smoothing)
+
+    This shrinks small categories toward the global mean.
+    """
+    from sklearn.model_selection import KFold
+
+    df = df.copy()
+
+    if columns is None:
+        # default to high-cardinality categoricals
+        columns = ['circuit', 'TeamName', 'DriverId']
+
+    columns = [c for c in columns if c in df.columns]
+    global_mean = df[target_col].mean()
+
+    for col in columns:
+        encoded_col = f'{col}_target_enc'
+        df[encoded_col] = np.nan
+
+        kf = KFold(n_splits=n_folds, shuffle=True, random_state=42)
+
+        for train_idx, val_idx in kf.split(df):
+            train_data = df.iloc[train_idx]
+
+            # calculate smoothed mean for each category using training fold only
+            category_stats = train_data.groupby(col)[target_col].agg(['mean', 'count'])
+
+            smoothed_means = (
+                (category_stats['count'] * category_stats['mean'] + smoothing * global_mean) /
+                (category_stats['count'] + smoothing)
+            )
+
+            # apply to validation fold
+            df.loc[df.index[val_idx], encoded_col] = df.iloc[val_idx][col].map(smoothed_means)
+
+        # fill any missing (unseen categories) with global mean
+        df[encoded_col] = df[encoded_col].fillna(global_mean)
+
+    return df
+
+
+def create_frequency_encoding(df: pd.DataFrame,
+                              columns: list = None) -> pd.DataFrame:
+    """
+    Encode categories by their frequency in the dataset.
+
+    Useful as a simple feature that captures how common certain
+    circuits/teams/drivers are without leaking target info.
+    """
+    df = df.copy()
+
+    if columns is None:
+        columns = ['circuit', 'TeamName', 'DriverId']
+
+    columns = [c for c in columns if c in df.columns]
+
+    for col in columns:
+        freq = df[col].value_counts(normalize=True)
+        df[f'{col}_freq'] = df[col].map(freq)
+
+    return df
