@@ -1201,3 +1201,203 @@ def create_frequency_encoding(df: pd.DataFrame,
         df[f'{col}_freq'] = df[col].map(freq)
 
     return df
+
+
+# =============================================================================
+# FEATURE PREPARATION PIPELINE
+# =============================================================================
+
+def get_feature_columns(df: pd.DataFrame, include_onehot: bool = False) -> dict:
+    """
+    Get lists of feature columns by category.
+
+    Returns dict with keys: numeric, categorical, target, id_columns
+    """
+    # columns to exclude from features
+    id_cols = ['DriverNumber', 'BroadcastName', 'Abbreviation', 'DriverId',
+               'TeamName', 'TeamColor', 'TeamId', 'FirstName', 'LastName',
+               'FullName', 'HeadshotUrl', 'CountryCode', 'race_name', 'date',
+               'Q1', 'Q2', 'Q3', 'Time', 'Status', 'ClassifiedPosition',
+               'GridPosition_raw', 'Position_raw', 'circuit', 'direction']
+
+    target_col = 'Position'
+    leakage_cols = ['Points', 'Laps', 'position_change', 'is_dnf', 'completed_race']
+
+    # categoricals that need encoding
+    categorical_raw = ['circuit', 'TeamName', 'DriverId', 'circuit_type',
+                       'downforce_level', 'grid_side']
+
+    # get all numeric columns
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+
+    # remove target, leakage, and id columns
+    exclude = set(id_cols + [target_col] + leakage_cols + ['year', 'round', 'month'])
+    numeric_features = [c for c in numeric_cols if c not in exclude]
+
+    # add one-hot columns if requested
+    onehot_cols = []
+    if include_onehot:
+        onehot_cols = [c for c in df.columns if any(
+            c.startswith(f'{cat}_') and c not in numeric_features
+            for cat in ['circuit', 'TeamName', 'circuit_type', 'downforce_level']
+        )]
+
+    return {
+        'numeric': numeric_features,
+        'categorical_raw': categorical_raw,
+        'onehot': onehot_cols,
+        'target': target_col,
+        'id_columns': id_cols,
+        'leakage': leakage_cols
+    }
+
+
+def prepare_features_for_training(df: pd.DataFrame,
+                                  encoding_type: str = 'target',
+                                  include_interactions: bool = True) -> tuple[pd.DataFrame, list]:
+    """
+    Prepare feature matrix for model training.
+
+    Args:
+        df: dataframe with all features
+        encoding_type: 'target', 'onehot', 'label', or 'mixed'
+        include_interactions: whether to include interaction features
+
+    Returns:
+        Tuple of (processed dataframe, list of feature column names)
+    """
+    df = df.copy()
+
+    # apply ordinal encoding (always useful)
+    df = create_ordinal_encoding(df)
+
+    # apply frequency encoding (always useful, no leakage)
+    df = create_frequency_encoding(df)
+
+    if encoding_type == 'target':
+        df = create_target_encoding(df, target_col='Position')
+        df, _ = create_label_encodings(df)
+
+    elif encoding_type == 'onehot':
+        df = create_onehot_features(df)
+        df, _ = create_label_encodings(df)
+
+    elif encoding_type == 'label':
+        df, _ = create_label_encodings(df)
+
+    elif encoding_type == 'mixed':
+        # target for driver (high cardinality), onehot for circuit/team
+        df = create_target_encoding(df, columns=['DriverId'])
+        df = create_onehot_features(df, columns=['circuit', 'TeamName', 'circuit_type', 'downforce_level'])
+        df, _ = create_label_encodings(df)
+
+    # get feature columns
+    feature_info = get_feature_columns(df, include_onehot=(encoding_type in ['onehot', 'mixed']))
+
+    feature_cols = feature_info['numeric'] + feature_info['onehot']
+
+    # add encoded columns
+    encoded_cols = [c for c in df.columns if c.endswith('_encoded') or
+                    c.endswith('_target_enc') or c.endswith('_freq') or
+                    c == 'downforce_ordinal']
+    feature_cols = list(set(feature_cols + encoded_cols))
+
+    # remove any remaining leakage columns
+    feature_cols = [c for c in feature_cols if c not in feature_info['leakage']]
+
+    # filter to interaction features if not wanted
+    if not include_interactions:
+        feature_cols = [c for c in feature_cols if '_x_' not in c]
+
+    return df, sorted(feature_cols)
+
+
+def split_by_time(df: pd.DataFrame,
+                  test_year: int = None,
+                  val_ratio: float = 0.15) -> tuple:
+    """
+    Split data respecting temporal ordering.
+
+    Uses most recent year as test set, and a portion of remaining as validation.
+    This prevents future data leakage.
+
+    Args:
+        df: full dataframe
+        test_year: year to use as test set (defaults to most recent)
+        val_ratio: fraction of training data to use for validation
+
+    Returns:
+        (train_df, val_df, test_df)
+    """
+    df = df.sort_values(['year', 'round', 'GridPosition']).reset_index(drop=True)
+
+    if test_year is None:
+        test_year = df['year'].max()
+
+    # test set is the specified year
+    test_df = df[df['year'] == test_year].copy()
+    train_val_df = df[df['year'] < test_year].copy()
+
+    # split train/val by time within remaining data
+    train_val_df = train_val_df.sort_values(['year', 'round'])
+    n_train = int(len(train_val_df) * (1 - val_ratio))
+
+    train_df = train_val_df.iloc[:n_train].copy()
+    val_df = train_val_df.iloc[n_train:].copy()
+
+    return train_df, val_df, test_df
+
+
+def create_model_ready_dataset(input_path: str = 'data/processed/race_data_with_features.csv',
+                               output_dir: str = 'data/processed',
+                               encoding_type: str = 'target') -> dict:
+    """
+    Create final model-ready datasets with train/val/test splits.
+
+    Saves processed data to CSV and returns summary statistics.
+    """
+    import os
+
+    print(f"Loading data from {input_path}...")
+    df = pd.read_csv(input_path)
+
+    # prepare features
+    print(f"Applying {encoding_type} encoding...")
+    df, feature_cols = prepare_features_for_training(df, encoding_type=encoding_type)
+
+    # split data
+    print("Splitting by time...")
+    train_df, val_df, test_df = split_by_time(df)
+
+    # ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # save splits
+    train_path = os.path.join(output_dir, 'train.csv')
+    val_path = os.path.join(output_dir, 'val.csv')
+    test_path = os.path.join(output_dir, 'test.csv')
+    features_path = os.path.join(output_dir, 'feature_columns.txt')
+
+    train_df.to_csv(train_path, index=False)
+    val_df.to_csv(val_path, index=False)
+    test_df.to_csv(test_path, index=False)
+
+    with open(features_path, 'w') as f:
+        f.write('\n'.join(feature_cols))
+
+    print(f"\nSaved:")
+    print(f"  Train: {train_path} ({len(train_df)} rows)")
+    print(f"  Val: {val_path} ({len(val_df)} rows)")
+    print(f"  Test: {test_path} ({len(test_df)} rows)")
+    print(f"  Features: {features_path} ({len(feature_cols)} features)")
+
+    return {
+        'train_size': len(train_df),
+        'val_size': len(val_df),
+        'test_size': len(test_df),
+        'n_features': len(feature_cols),
+        'feature_cols': feature_cols,
+        'train_years': sorted(train_df['year'].unique().tolist()),
+        'val_years': sorted(val_df['year'].unique().tolist()),
+        'test_years': sorted(test_df['year'].unique().tolist())
+    }
