@@ -61,13 +61,15 @@ def load_data():
         with open(feature_cols_path, 'r') as f:
             model_features = [line.strip() for line in f if line.strip()]
 
-        # Select only the features that were used during training
+        # Select only the features that were used during training, in the exact order
         available_features = [f for f in model_features if f in X_train.columns]
+
+        # Reorder columns to match training order
         X_train = X_train[available_features]
         X_val = X_val[available_features]
         X_test = X_test[available_features]
 
-        print(f"Using {len(available_features)} features from training")
+        print(f"Using {len(available_features)} features from training (in correct order)")
     else:
         # Fallback: Keep only numeric columns
         numeric_cols = X_train.select_dtypes(include=['float64', 'int64']).columns
