@@ -113,7 +113,7 @@ def train_win_classifier(X_train, y_train_class, X_val, y_val_class, model_type=
     print("=" * 60)
 
     # Calculate class weights
-    class_weights = compute_class_weight('balanced', classes=[0, 1], y=y_train_class)
+    class_weights = compute_class_weight('balanced', classes=np.array([0, 1]), y=y_train_class)
     scale_pos_weight = class_weights[1] / class_weights[0]
 
     print(f"\nClass imbalance handling:")
@@ -199,7 +199,7 @@ def train_podium_classifier(X_train, y_train_class, X_val, y_val_class, model_ty
     print("=" * 60)
 
     # Calculate class weights (less extreme than win)
-    class_weights = compute_class_weight('balanced', classes=[0, 1], y=y_train_class)
+    class_weights = compute_class_weight('balanced', classes=np.array([0, 1]), y=y_train_class)
     scale_pos_weight = class_weights[1] / class_weights[0]
 
     print(f"\nClass imbalance handling:")
