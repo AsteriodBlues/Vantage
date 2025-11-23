@@ -91,32 +91,12 @@ def load_best_model():
     """Load the best performing model from previous analysis."""
     print("\nLoading best model...")
 
-    # Try to load ensemble models (best from previous work)
+    # Try to load models - prefer advanced models for better compatibility
     ensemble_path = 'results/models/ensemble_models.pkl'
     advanced_path = 'results/models/advanced_models.pkl'
 
-    if Path(ensemble_path).exists():
-        with open(ensemble_path, 'rb') as f:
-            models_dict = pickle.load(f)
-
-        # Prefer voting_weighted as it performed best
-        if 'voting_weighted' in models_dict:
-            model = models_dict['voting_weighted']
-            print(f"Loaded voting_weighted ensemble from: {ensemble_path}")
-            return model, 'voting', 'voting_weighted'
-        elif 'voting_equal' in models_dict:
-            model = models_dict['voting_equal']
-            print(f"Loaded voting_equal ensemble from: {ensemble_path}")
-            return model, 'voting', 'voting_equal'
-        else:
-            # Use first available model
-            model_name = list(models_dict.keys())[0]
-            model = models_dict[model_name]
-            print(f"Loaded {model_name} from: {ensemble_path}")
-            model_type = 'stacking' if 'stacking' in model_name else 'voting'
-            return model, model_type, model_name
-
-    elif Path(advanced_path).exists():
+    # Try advanced models first (single models easier for interpretation)
+    if Path(advanced_path).exists():
         with open(advanced_path, 'rb') as f:
             models_dict = pickle.load(f)
 
