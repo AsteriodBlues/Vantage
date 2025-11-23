@@ -44,8 +44,14 @@ def calculate_circuit_statistics(df: pd.DataFrame) -> pd.DataFrame:
         'year_first_raced': 'first'
     }).round(3)
 
-    # Flatten column names
-    circuit_stats.columns = ['_'.join(str(col)).strip('_') for col in circuit_stats.columns]
+    # Flatten column names - handle tuples properly
+    new_cols = []
+    for col in circuit_stats.columns:
+        if isinstance(col, tuple):
+            new_cols.append('_'.join(str(c) for c in col if c))
+        else:
+            new_cols.append(str(col))
+    circuit_stats.columns = new_cols
 
     # Rename for clarity
     circuit_stats.rename(columns={

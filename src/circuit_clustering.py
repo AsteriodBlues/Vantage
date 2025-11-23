@@ -275,8 +275,8 @@ def create_hierarchical_dendrogram(
 def visualize_clusters_2d(
     X: pd.DataFrame,
     labels: np.ndarray,
-    feature_x: str,
-    feature_y: str,
+    feature_x: str = None,
+    feature_y: str = None,
     save_path: str = None
 ) -> None:
     """
@@ -285,10 +285,16 @@ def visualize_clusters_2d(
     Args:
         X: Feature matrix
         labels: Cluster labels
-        feature_x: Feature for x-axis
-        feature_y: Feature for y-axis
+        feature_x: Feature for x-axis (auto-select if None)
+        feature_y: Feature for y-axis (auto-select if None)
         save_path: Path to save figure
     """
+    # Auto-select features if not provided
+    if feature_x is None:
+        feature_x = X.columns[0]
+    if feature_y is None:
+        feature_y = X.columns[1] if len(X.columns) > 1 else X.columns[0]
+
     plt.figure(figsize=(10, 8))
 
     # Create scatter plot
@@ -423,10 +429,17 @@ def run_clustering_analysis(
         save_path=output_path / 'dendrogram.png'
     )
 
-    # Visualize in 2D
-    if 'overtaking_score' in X.columns and 'pole_win_rate' in X.columns:
+    # Visualize in 2D - use available features
+    vis_features = [f for f in ['overtaking_score', 'pole_win_rate'] if f in X.columns]
+    if len(vis_features) >= 2:
         visualize_clusters_2d(
-            X, labels, 'overtaking_score', 'pole_win_rate',
+            X, labels, vis_features[0], vis_features[1],
+            save_path=output_path / 'clusters_2d.png'
+        )
+    else:
+        # Use any two available features
+        visualize_clusters_2d(
+            X, labels,
             save_path=output_path / 'clusters_2d.png'
         )
 
