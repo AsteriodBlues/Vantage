@@ -38,15 +38,43 @@ def load_modeling_data(data_dir: str = 'data/processed') -> Tuple:
     # Target is always 'Position'
     target = 'Position'
 
+    # Drop non-numeric columns that shouldn't be used for modeling
+    # Also drop position_change since it's derived from the target (data leakage!)
+    cols_to_drop = [
+        target,
+        'position_change',  # CRITICAL: This is GridPosition - Position, causes leakage!
+        'DriverNumber', 'BroadcastName', 'Abbreviation', 'DriverId',
+        'TeamName', 'TeamColor', 'TeamId', 'FirstName', 'LastName',
+        'FullName', 'HeadshotUrl', 'CountryCode', 'ClassifiedPosition',
+        'Q1', 'Q2', 'Q3', 'Time', 'Status', 'Points', 'Laps',
+        'year', 'round', 'race_name', 'circuit', 'date',
+        'GridPosition_raw', 'Position_raw', 'month', 'grid_side',
+        'circuit_type', 'downforce_level', 'direction'
+    ]
+
+    # Filter to only existing columns
+    cols_to_drop = [col for col in cols_to_drop if col in train_df.columns]
+
     # Separate features and target
-    X_train = train_df.drop(columns=[target])
+    X_train = train_df.drop(columns=cols_to_drop)
     y_train = train_df[target]
 
-    X_val = val_df.drop(columns=[target])
+    X_val = val_df.drop(columns=cols_to_drop)
     y_val = val_df[target]
 
-    X_test = test_df.drop(columns=[target])
+    X_test = test_df.drop(columns=cols_to_drop)
     y_test = test_df[target]
+
+    # Select only numeric columns
+    numeric_cols = X_train.select_dtypes(include=[np.number]).columns
+    X_train = X_train[numeric_cols]
+    X_val = X_val[numeric_cols]
+    X_test = X_test[numeric_cols]
+
+    # Fill any remaining NaN values with 0
+    X_train = X_train.fillna(0)
+    X_val = X_val.fillna(0)
+    X_test = X_test.fillna(0)
 
     return X_train, X_val, X_test, y_train, y_val, y_test
 
