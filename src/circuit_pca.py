@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from matplotlib.patches import Ellipse
 from mpl_toolkits.mplot3d import Axes3D
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 from pathlib import Path
 
 
