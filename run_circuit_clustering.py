@@ -78,7 +78,7 @@ def main():
 
     print(f"\nCircuit Cluster Assignments:")
     for _, row in cluster_df.iterrows():
-        print(f"  {row['circuit']:30s} -> {row['cluster_name']}")
+        print(f"  {str(row['circuit']):30s} -> {row['cluster_name']}")
 
     # PCA variance
     total_var = pca_results['pca_model'].explained_variance_ratio_.sum()
