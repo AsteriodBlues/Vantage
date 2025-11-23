@@ -29,21 +29,28 @@ def add_cluster_features(
     """
     print("Adding cluster features to race data...")
 
-    # Create cluster mapping dictionary
+    # Create cluster mapping dictionary - circuit indices are integers
     cluster_map = dict(zip(
-        cluster_assignments['circuit'],
+        cluster_assignments['circuit'].astype(int),
         cluster_assignments['cluster']
     ))
 
-    # Add cluster ID
-    df['circuit_cluster'] = df['circuit'].map(cluster_map)
+    # Add cluster ID - map from circuit_encoded
+    df['circuit_cluster'] = df['circuit_encoded'].map(cluster_map)
 
-    # One-hot encode clusters
+    # Fill any missing values with -1 (for circuits not in training set)
+    df['circuit_cluster'] = df['circuit_cluster'].fillna(-1).astype(int)
+
+    # One-hot encode clusters (excluding -1)
     cluster_dummies = pd.get_dummies(
         df['circuit_cluster'],
         prefix='cluster',
         dtype=int
     )
+    # Remove the -1 column if it exists
+    if 'cluster_-1' in cluster_dummies.columns:
+        cluster_dummies = cluster_dummies.drop('cluster_-1', axis=1)
+
     df = pd.concat([df, cluster_dummies], axis=1)
 
     print(f"Added cluster features: {cluster_dummies.columns.tolist()}")
@@ -83,16 +90,30 @@ def train_model_with_clusters(
     train = add_cluster_features(train, clusters)
     val = add_cluster_features(val, clusters)
 
-    # Define feature sets
+    # Define feature sets (using actual column names from data)
     baseline_features = [
-        'GridPosition', 'driver_encoded', 'circuit_encoded',
-        'season_phase', 'team_encoded', 'recent_form'
+        'GridPosition', 'DriverId_encoded', 'circuit_encoded',
+        'season_progress', 'TeamName_encoded', 'driver_momentum'
     ]
 
-    cluster_features = [
+    # Get cluster features that exist in both train and val
+    train_cluster_features = [
         col for col in train.columns
         if col.startswith('cluster_') or col == 'circuit_cluster'
     ]
+    val_cluster_features = [
+        col for col in val.columns
+        if col.startswith('cluster_') or col == 'circuit_cluster'
+    ]
+    cluster_features = list(set(train_cluster_features) & set(val_cluster_features))
+
+    # Ensure train and val have the same cluster columns
+    for col in train_cluster_features:
+        if col not in val.columns:
+            val[col] = 0
+    for col in val_cluster_features:
+        if col not in train.columns:
+            train[col] = 0
 
     # Train baseline model
     print("\nTraining baseline model...")
@@ -230,10 +251,10 @@ def train_cluster_specific_models(
     train = add_cluster_features(train, clusters)
     val = add_cluster_features(val, clusters)
 
-    # Features for cluster-specific models
+    # Features for cluster-specific models (using actual column names)
     features = [
-        'GridPosition', 'driver_encoded', 'season_phase',
-        'team_encoded', 'recent_form'
+        'GridPosition', 'DriverId_encoded', 'season_progress',
+        'TeamName_encoded', 'driver_momentum'
     ]
 
     cluster_models = {}
@@ -294,6 +315,18 @@ def train_cluster_specific_models(
         predictions.append(val_cluster_pred)
 
     # Combine predictions and evaluate overall
+    if len(predictions) == 0:
+        print("\nNo predictions made - all clusters skipped")
+        return {
+            'models': cluster_models,
+            'metrics': cluster_metrics,
+            'overall_metrics': {
+                'rmse': np.nan,
+                'mae': np.nan,
+                'r2': np.nan
+            }
+        }
+
     all_predictions = pd.concat(predictions, ignore_index=True)
     overall_rmse = np.sqrt(mean_squared_error(
         all_predictions['Position'],
