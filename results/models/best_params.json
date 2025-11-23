@@ -1,0 +1,36 @@
+{
+  "xgboost": {
+    "n_estimators": 539,
+    "max_depth": 7,
+    "learning_rate": 0.04094162942045279,
+    "min_child_weight": 6,
+    "subsample": 0.7828436536165114,
+    "colsample_bytree": 0.8943099434379513,
+    "gamma": 0.3080756143236564,
+    "reg_alpha": 0.47739692835442155,
+    "reg_lambda": 4.209786221945541
+  },
+  "lightgbm": {
+    "n_estimators": 882,
+    "num_leaves": 212,
+    "learning_rate": 0.020056650211730115,
+    "feature_fraction": 0.9362913144178383,
+    "bagging_fraction": 0.717081316229874,
+    "bagging_freq": 5,
+    "min_data_in_leaf": 10,
+    "lambda_l1": 6.402376742703393,
+    "lambda_l2": 5.628308336403139,
+    "random_state": 42,
+    "n_jobs": -1,
+    "verbose": -1
+  },
+  "catboost": {
+    "iterations": 963,
+    "depth": 4,
+    "learning_rate": 0.026346042610515007,
+    "l2_leaf_reg": 2.647846701775169,
+    "border_count": 134,
+    "random_seed": 42,
+    "verbose": false
+  }
+}
