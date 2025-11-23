@@ -304,4 +304,4 @@ The models are production-ready, well-documented, and fully reproducible via sav
 **Files**: 3 Python modules, 8 result files, 5 visualizations
 **Total Training Time**: ~20 minutes
 **Best Model**: CatBoost (tuned) - 0.592 MAE
-**Status**: ✅ Complete and ready for deployment
+**Status**: Complete and ready for deployment

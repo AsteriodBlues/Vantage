@@ -1,4 +1,4 @@
-# Day 11: Baseline Models - Summary Report
+# Baseline Models - Summary Report
 
 ## Completed Tasks
 
