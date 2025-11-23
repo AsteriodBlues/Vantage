@@ -55,6 +55,14 @@ def load_data():
     X_test = test_df[feature_cols]
     y_test = test_df[target_col]
 
+    # Keep only numeric columns
+    numeric_cols = X_train.select_dtypes(include=['float64', 'int64']).columns
+    X_train = X_train[numeric_cols]
+    X_val = X_val[numeric_cols]
+    X_test = X_test[numeric_cols]
+
+    print(f"Using {len(numeric_cols)} numeric features")
+
     print(f"Train: {len(X_train)} samples")
     print(f"Val: {len(X_val)} samples")
     print(f"Test: {len(X_test)} samples")
