@@ -167,7 +167,8 @@ def apply_kmeans(
     for cluster, count in zip(unique, counts):
         circuits = X_original.index[labels == cluster].tolist()
         print(f"  Cluster {cluster}: {count} circuits")
-        print(f"    {', '.join(circuits[:5])}{'...' if count > 5 else ''}")
+        circuit_names = [str(c) for c in circuits[:5]]
+        print(f"    {', '.join(circuit_names)}{'...' if count > 5 else ''}")
 
     return kmeans, labels
 
