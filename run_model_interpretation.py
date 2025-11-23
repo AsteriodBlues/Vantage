@@ -55,13 +55,27 @@ def load_data():
     X_test = test_df[feature_cols]
     y_test = test_df[target_col]
 
-    # Keep only numeric columns
-    numeric_cols = X_train.select_dtypes(include=['float64', 'int64']).columns
-    X_train = X_train[numeric_cols]
-    X_val = X_val[numeric_cols]
-    X_test = X_test[numeric_cols]
+    # Load the feature list used during training
+    feature_cols_path = Path('data/processed/feature_columns.txt')
+    if feature_cols_path.exists():
+        with open(feature_cols_path, 'r') as f:
+            model_features = [line.strip() for line in f if line.strip()]
 
-    print(f"Using {len(numeric_cols)} numeric features")
+        # Select only the features that were used during training
+        available_features = [f for f in model_features if f in X_train.columns]
+        X_train = X_train[available_features]
+        X_val = X_val[available_features]
+        X_test = X_test[available_features]
+
+        print(f"Using {len(available_features)} features from training")
+    else:
+        # Fallback: Keep only numeric columns
+        numeric_cols = X_train.select_dtypes(include=['float64', 'int64']).columns
+        X_train = X_train[numeric_cols]
+        X_val = X_val[numeric_cols]
+        X_test = X_test[numeric_cols]
+
+        print(f"Using {len(numeric_cols)} numeric features")
 
     print(f"Train: {len(X_train)} samples")
     print(f"Val: {len(X_val)} samples")
