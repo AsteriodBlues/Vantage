@@ -67,36 +67,49 @@ def load_best_model():
     """Load the best performing model from previous analysis."""
     print("\nLoading best model...")
 
-    # Try to load voting ensemble (best from Day 13)
-    model_paths = [
-        'results/models/ensemble_voting_weighted.pkl',
-        'results/models/xgboost_tuned.pkl',
-        'results/models/catboost_tuned.pkl',
-        'results/models/lightgbm_tuned.pkl'
-    ]
+    # Try to load ensemble models (best from previous work)
+    ensemble_path = 'results/models/ensemble_models.pkl'
+    advanced_path = 'results/models/advanced_models.pkl'
 
-    for model_path in model_paths:
-        if Path(model_path).exists():
-            with open(model_path, 'rb') as f:
-                model = pickle.load(f)
-            print(f"Loaded model from: {model_path}")
+    if Path(ensemble_path).exists():
+        with open(ensemble_path, 'rb') as f:
+            models_dict = pickle.load(f)
 
-            # Determine model type
-            model_name = Path(model_path).stem
-            if 'voting' in model_name:
-                model_type = 'voting'
-            elif 'stacking' in model_name:
-                model_type = 'stacking'
-            elif 'xgboost' in model_name:
-                model_type = 'xgboost'
-            elif 'catboost' in model_name:
-                model_type = 'catboost'
-            elif 'lightgbm' in model_name:
-                model_type = 'lightgbm'
-            else:
-                model_type = 'unknown'
-
+        # Prefer voting_weighted as it performed best
+        if 'voting_weighted' in models_dict:
+            model = models_dict['voting_weighted']
+            print(f"Loaded voting_weighted ensemble from: {ensemble_path}")
+            return model, 'voting', 'voting_weighted'
+        elif 'voting_equal' in models_dict:
+            model = models_dict['voting_equal']
+            print(f"Loaded voting_equal ensemble from: {ensemble_path}")
+            return model, 'voting', 'voting_equal'
+        else:
+            # Use first available model
+            model_name = list(models_dict.keys())[0]
+            model = models_dict[model_name]
+            print(f"Loaded {model_name} from: {ensemble_path}")
+            model_type = 'stacking' if 'stacking' in model_name else 'voting'
             return model, model_type, model_name
+
+    elif Path(advanced_path).exists():
+        with open(advanced_path, 'rb') as f:
+            models_dict = pickle.load(f)
+
+        # Prefer tuned models
+        for name in ['catboost_tuned', 'xgboost_tuned', 'lightgbm_tuned']:
+            if name in models_dict:
+                model = models_dict[name]
+                print(f"Loaded {name} from: {advanced_path}")
+                model_type = name.split('_')[0]
+                return model, model_type, name
+
+        # Use first available
+        model_name = list(models_dict.keys())[0]
+        model = models_dict[model_name]
+        print(f"Loaded {model_name} from: {advanced_path}")
+        model_type = model_name.split('_')[0]
+        return model, model_type, model_name
 
     raise FileNotFoundError("No trained models found. Please run training first.")
 
