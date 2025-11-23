@@ -136,18 +136,32 @@ def calculate_derived_features(circuit_stats: pd.DataFrame) -> pd.DataFrame:
     """
     print("Calculating derived features...")
 
-    # Overtaking metrics
-    circuit_stats['overtaking_score'] = circuit_stats['position_change_std']
-    circuit_stats['processional_score'] = 1 / (circuit_stats['position_change_std'] + 0.1)
+    # Check available columns
+    print(f"Available columns: {circuit_stats.columns.tolist()}")
+
+    # Overtaking metrics (use correct column names after aggregation)
+    if 'position_change_std' in circuit_stats.columns:
+        pos_std_col = 'position_change_std'
+    elif 'position_std' in circuit_stats.columns:
+        pos_std_col = 'position_std'
+    else:
+        print("Warning: No std column found, using default")
+        circuit_stats['overtaking_score'] = 1.0
+        circuit_stats['processional_score'] = 1.0
+        return circuit_stats
+
+    circuit_stats['overtaking_score'] = circuit_stats[pos_std_col]
+    circuit_stats['processional_score'] = 1 / (circuit_stats[pos_std_col] + 0.1)
 
     # Chaos factor
-    circuit_stats['chaos_factor'] = (
-        circuit_stats['position_std'] /
-        (circuit_stats['avg_finish_position'] + 1)
-    )
+    if 'avg_finish_position' in circuit_stats.columns:
+        circuit_stats['chaos_factor'] = (
+            circuit_stats[pos_std_col] /
+            (circuit_stats['avg_finish_position'] + 1)
+        )
 
-    # Predictability
-    circuit_stats['predictability'] = 1 / (circuit_stats['position_std'] + 0.1)
+        # Predictability
+        circuit_stats['predictability'] = 1 / (circuit_stats[pos_std_col] + 0.1)
 
     return circuit_stats
 
