@@ -210,7 +210,7 @@ def analyze_cluster_characteristics(
         cluster_profiles.append({
             'cluster': cluster,
             'size': cluster_mask.sum(),
-            'circuits': ', '.join(X.index[cluster_mask].tolist()),
+            'circuits': ', '.join([str(c) for c in X.index[cluster_mask].tolist()]),
             'top_features': ', '.join(top_features.index.tolist()),
             'feature_values': ', '.join([f"{v:.2f}" for v in cluster_mean[top_features.index]])
         })
