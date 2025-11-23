@@ -35,7 +35,17 @@ def load_data():
     test_df = pd.read_csv(data_dir / 'test.csv')
 
     # Separate features and target
-    target_col = 'position'
+    # Try different possible target column names
+    possible_targets = ['position', 'Position', 'finish_position']
+    target_col = None
+    for col in possible_targets:
+        if col in train_df.columns:
+            target_col = col
+            break
+
+    if target_col is None:
+        raise ValueError(f"Could not find target column. Available: {train_df.columns.tolist()}")
+
     feature_cols = [col for col in train_df.columns if col != target_col]
 
     X_train = train_df[feature_cols]
