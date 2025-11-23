@@ -29,12 +29,21 @@ def load_data():
 
     data_dir = Path('data/processed')
 
-    X_train = pd.read_csv(data_dir / 'X_train.csv')
-    X_val = pd.read_csv(data_dir / 'X_val.csv')
-    X_test = pd.read_csv(data_dir / 'X_test.csv')
-    y_train = pd.read_csv(data_dir / 'y_train.csv')['position']
-    y_val = pd.read_csv(data_dir / 'y_val.csv')['position']
-    y_test = pd.read_csv(data_dir / 'y_test.csv')['position']
+    # Load the split files
+    train_df = pd.read_csv(data_dir / 'train.csv')
+    val_df = pd.read_csv(data_dir / 'val.csv')
+    test_df = pd.read_csv(data_dir / 'test.csv')
+
+    # Separate features and target
+    target_col = 'position'
+    feature_cols = [col for col in train_df.columns if col != target_col]
+
+    X_train = train_df[feature_cols]
+    y_train = train_df[target_col]
+    X_val = val_df[feature_cols]
+    y_val = val_df[target_col]
+    X_test = test_df[feature_cols]
+    y_test = test_df[target_col]
 
     print(f"Train: {len(X_train)} samples")
     print(f"Val: {len(X_val)} samples")
