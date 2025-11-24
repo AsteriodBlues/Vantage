@@ -3,86 +3,162 @@
 ## Model Architecture
 - **Type**: Random Forest Regressor
 - **Training Data**: 2018-2024 F1 races
-- **Total Features**: 134 engineered features
+- **Total Features**: 136 engineered features
 - **Target**: Race finish position (1-20)
 
 ## Performance Overview
 
 ### Production Model
 - **Model Type**: RandomForestRegressor
-- **Training Samples**: 357 race results
-- **Model Size**: 0.25 MB
+- **Training Samples**: 357 races
+- **Validation Samples**: 63 races
+- **Test Samples**: 360 races
+- **Model Size**: 0.14 MB
 - **Inference Time**: <50ms per prediction
 
-## Feature Categories
+### Performance Metrics
+- **Training MAE**: 0.210 positions
+- **Validation MAE**: 0.342 positions
+- **Test MAE**: 0.570 positions
+- **Training R²**: 0.996
+- **Validation R²**: 0.989
+- **Test R²**: 0.971
 
-### Core Features (8)
-- Grid position and transformations
-- Circuit characteristics
-- Team performance metrics
-- Driver experience
+## Feature Categories (136 total)
 
-### Engineered Features (126)
-- Position-based indicators
-- Temporal features
-- Circuit statistics
-- Team form metrics
-- Driver statistics
-- Interaction features
+### Core Features
+- **Grid Position**: Starting position and transformations (squared, cubed, log, sqrt)
+- **Position Indicators**: front_row, top_three, top_five, top_ten, back_half
+- **Grid Metadata**: grid_side, grid_side_clean, grid_row
+
+### Temporal Features
+- **Season Progress**: race_number, season_progress, races_remaining
+- **Season Phase**: early_season, mid_season, late_season
+- **Special Races**: is_season_opener, is_season_finale
+- **Regulation Era**: post_2022, years_into_regulations
+
+### Circuit Features
+- **Track Characteristics**: pole_win_rate, overtaking_difficulty, correlation
+- **Statistics**: avg_pos_change, dnf_rate, improved_pct
+- **Physical**: track_length, num_turns, altitude, longest_straight
+- **Type**: circuit_type, downforce_level, is_street
+
+### Team Features
+- **Recent Form**: avg_finish_last_5, avg_finish_last_3, points_last_5
+- **Season Stats**: wins_season, podiums_season, points_total
+- **Performance**: momentum, consistency, vs_average_grid
+- **Reliability**: dnf_rate_last_10, completion_rate_season
+
+### Driver Features
+- **Experience**: career_races, years_experience, is_rookie, is_veteran
+- **Track History**: races_at_circuit, avg_finish_at_circuit, is_specialist
+- **Recent Form**: avg_finish_last_5, points_last_5, momentum
+- **Relative**: vs_teammate, vs_car_potential, is_team_leader
+
+### Interaction Features
+- **Grid Interactions**: grid_x_overtaking, grid_x_team_delta, grid_x_low_df
+- **Context**: momentum_x_variance, form_x_contention, veteran_new_circuit
+- **Strategic**: early_x_variance, late_contention_pressure
+
+### Categorical Encodings
+- **Frequency**: circuit_freq, TeamName_freq, DriverId_freq
+- **Target**: circuit_target_enc, TeamName_target_enc, DriverId_target_enc
+- **Label**: circuit_encoded, TeamName_encoded, DriverId_encoded
 
 ## Model Strengths
-- Fast predictions (<50ms)
-- Handles circuit clustering
-- Team performance tracking
-- Grid position analysis
+- **Accurate**: Test MAE of 0.57 positions (predicts within ~1 position)
+- **Fast**: Sub-50ms inference time
+- **Generalizable**: Strong R² on unseen test data (0.971)
+- **Comprehensive**: 136 features covering all race aspects
+- **Interpretable**: Tree-based model with clear feature importance
 
 ## Usage Examples
 
-### Python
+### Command Line Interface
+
+```bash
+# Single driver prediction
+python src/predict_cli.py single \
+    --driver "Max Verstappen" \
+    --team "Red Bull" \
+    --circuit "Monaco" \
+    --grid 1 \
+    --race-number 7
+
+# Full grid prediction
+python src/predict_cli.py grid \
+    --grid-file examples/example_grid.json
+
+# Interactive mode
+python src/predict_cli.py interactive
+```
+
+### Python API
 ```python
-import joblib
+from src.prediction_pipeline import F1PredictionPipeline
 
-# Load model
-model = joblib.load('models/production/finish_position_predictor_latest/model.pkl')
+# Initialize pipeline
+pipeline = F1PredictionPipeline()
 
-# Make prediction
-import pandas as pd
-features = pd.DataFrame({...})  # Your features
-prediction = model.predict(features)
+# Single prediction
+result = pipeline.predict(
+    grid_position=1,
+    circuit_name="Monaco",
+    team="Ferrari",
+    driver="Charles Leclerc",
+    year=2024,
+    race_number=7
+)
+
+print(f"Predicted finish: P{result['predicted_finish_rounded']}")
+print(f"Win probability: {result['probabilities']['win']:.1%}")
 ```
 
 ### Model Files
 ```
 models/
 ├── production/
-│   ├── finish_position_predictor_latest/
-│   │   ├── model.pkl (0.25 MB)
-│   │   └── metadata.json
+│   ├── simple_predictor_latest/ (symlink)
+│   └── simple_predictor_20251123_180915/
+│       ├── model.pkl (0.14 MB)
+│       └── metadata.json
 └── preprocessing/
     ├── feature_names.pkl
     ├── circuit_statistics.pkl
-    └── team_baselines.pkl
+    ├── team_baselines.pkl
+    └── driver_statistics.pkl
 ```
 
-## Feature Importance (Top 10)
-*Note: Run feature importance analysis to populate*
-
-1. GridPosition
-2. driver_momentum
-3. circuit_encoded
-4. season_progress
-5. TeamName_encoded
-6. (Additional features from model)
+## Hyperparameters
+- **n_estimators**: 100 trees
+- **max_depth**: 15 levels
+- **min_samples_split**: 5
+- **min_samples_leaf**: 2
+- **random_state**: 42
 
 ## Deployment Checklist
-- ✅ Model serialized
+- ✅ Model serialized and versioned
 - ✅ Preprocessing artifacts saved
 - ✅ Metadata documented
 - ✅ Example data provided
 - ✅ API specification created
+- ✅ CLI tool implemented
+- ✅ Python prediction pipeline
+- ✅ Comprehensive documentation
+- ✅ Performance metrics validated
 
-## Next Steps
-- Build prediction CLI
-- Create web interface
-- Add real-time predictions
-- Monitor model performance
+## Model Limitations
+- **Data Coverage**: Limited to 2018-2024 seasons
+- **Unknown Drivers**: New drivers use default statistics
+- **Track Changes**: Circuit modifications not reflected
+- **Weather**: No weather condition features
+- **Strategy**: Pit stop strategy not modeled
+
+## Future Improvements
+- Add real-time data integration
+- Include weather and track temperature
+- Model pit stop strategy impact
+- Implement ensemble with other algorithms
+- Add race simulation mode
+- Create web dashboard
+- Deploy as REST API service
