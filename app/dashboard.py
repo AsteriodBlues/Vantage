@@ -452,36 +452,36 @@ def home_page():
     with col1:
         st.markdown("""
         <div class='metric-card'>
-            <h4>Prediction Accuracy</h4>
-            <h2 style='color: #1976D2;'>±0.57</h2>
-            <p>Average positions error</p>
+            <h4 style='color: #4a5568; font-weight: 600; margin-bottom: 12px;'>Prediction Accuracy</h4>
+            <h2 style='color: #667eea; font-size: 2.5rem; margin: 16px 0;'>±0.57</h2>
+            <p style='color: #718096; font-weight: 500;'>Average positions error</p>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
         <div class='metric-card'>
-            <h4>Within 1 Position</h4>
-            <h2 style='color: #388E3C;'>72%</h2>
-            <p>Prediction success rate</p>
+            <h4 style='color: #4a5568; font-weight: 600; margin-bottom: 12px;'>Within 1 Position</h4>
+            <h2 style='color: #48bb78; font-size: 2.5rem; margin: 16px 0;'>72%</h2>
+            <p style='color: #718096; font-weight: 500;'>Prediction success rate</p>
         </div>
         """, unsafe_allow_html=True)
 
     with col3:
         st.markdown("""
         <div class='metric-card'>
-            <h4>R² Score</h4>
-            <h2 style='color: #7B1FA2;'>0.971</h2>
-            <p>Variance explained</p>
+            <h4 style='color: #4a5568; font-weight: 600; margin-bottom: 12px;'>R² Score</h4>
+            <h2 style='color: #9f7aea; font-size: 2.5rem; margin: 16px 0;'>0.971</h2>
+            <p style='color: #718096; font-weight: 500;'>Variance explained</p>
         </div>
         """, unsafe_allow_html=True)
 
     with col4:
         st.markdown("""
         <div class='metric-card'>
-            <h4>Features</h4>
-            <h2 style='color: #F57C00;'>136</h2>
-            <p>Engineered features</p>
+            <h4 style='color: #4a5568; font-weight: 600; margin-bottom: 12px;'>Features</h4>
+            <h2 style='color: #ed8936; font-size: 2.5rem; margin: 16px 0;'>136</h2>
+            <p style='color: #718096; font-weight: 500;'>Engineered features</p>
         </div>
         """, unsafe_allow_html=True)
 
