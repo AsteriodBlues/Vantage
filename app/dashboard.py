@@ -418,10 +418,10 @@ def home_page():
                 border-radius: 24px; margin-bottom: 40px; border: 1px solid rgba(102, 126, 234, 0.1);'>
         <div style='font-size: 4rem; margin-bottom: 20px;'>🏁</div>
         <h1 style='font-size: 3.5rem; margin-bottom: 16px; letter-spacing: -0.03em;'>VANTAGE F1</h1>
-        <p style='font-size: 1.3rem; color: #718096; font-weight: 500; margin-bottom: 8px;'>
+        <p style='font-size: 1.3rem; color: #4a5568; font-weight: 600; margin-bottom: 12px;'>
             Valuating Advantage Numerically Through Analysis of Grid Effects
         </p>
-        <p style='font-size: 1.1rem; color: #a0aec0; max-width: 700px; margin: 0 auto; line-height: 1.6;'>
+        <p style='font-size: 1.1rem; color: #718096; max-width: 700px; margin: 0 auto; line-height: 1.6; font-weight: 500;'>
             Advanced machine learning for Formula 1 race prediction based on starting grid positions
             and comprehensive race analysis.
         </p>
