@@ -1,0 +1,11 @@
+TeamName,Position_mean,Position_std,Position_min,GridPosition_mean,position_change_mean,is_dnf_mean,Points_sum
+Mercedes,1.5,0.707,1.0,1.5,0.0,0.0,43.0
+Red Bull,3.5,0.707,3.0,9.0,5.5,0.0,27.0
+Ferrari,5.5,0.707,5.0,6.0,0.5,0.0,18.0
+Racing Point,8.0,1.414,7.0,10.0,2.0,0.0,8.0
+Toro Rosso,12.0,1.414,11.0,6.5,-5.5,1.0,0.0
+Haas,14.0,8.485,8.0,8.5,-5.5,0.5,4.0
+McLaren,14.5,0.707,14.0,18.5,4.0,1.0,0.0
+Renault,14.5,6.364,10.0,14.5,0.0,1.0,1.0
+Sauber,15.0,4.243,12.0,15.0,0.0,1.0,0.0
+Williams,16.5,0.707,16.0,15.5,-1.0,1.0,0.0
