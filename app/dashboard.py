@@ -32,47 +32,155 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS for professional styling
 st.markdown("""
 <style>
+    /* Main container padding */
     .main {
         padding: 0rem 1rem;
+    }
+
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab-list"] button {
+        background-color: #f0f2f6;
+        border-radius: 8px 8px 0 0;
+        padding: 10px 20px;
+        font-weight: 500;
+    }
+    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+        background-color: #1976D2;
+        color: white;
     }
     .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
         font-size: 18px;
     }
+
+    /* Custom cards */
     .metric-card {
-        background-color: #f0f2f6;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         padding: 20px;
-        border-radius: 10px;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        text-align: center;
+        transition: transform 0.2s;
     }
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Prediction box */
     .prediction-box {
-        background-color: #e3f2fd;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 4px solid #2196F3;
-        margin: 10px 0;
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 5px solid #2196F3;
+        margin: 15px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+
+    /* Warning box */
     .warning-box {
-        background-color: #fff3e0;
-        padding: 15px;
-        border-radius: 8px;
-        border-left: 4px solid #ff9800;
-        margin: 10px 0;
+        background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 5px solid #ff9800;
+        margin: 15px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+
+    /* Success box */
+    .success-box {
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 5px solid #4caf50;
+        margin: 15px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Headers */
     h1 {
         color: #1976D2;
         font-family: 'Arial Black', sans-serif;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
+    h2 {
+        color: #1565C0;
+        border-bottom: 3px solid #1976D2;
+        padding-bottom: 10px;
+    }
+    h3 {
+        color: #1976D2;
+    }
+
+    /* Buttons */
     .stButton > button {
-        background-color: #1976D2;
+        background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
         color: white;
         font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transition: all 0.3s;
     }
     .stButton > button:hover {
-        background-color: #1565C0;
+        background: linear-gradient(135deg, #1565C0 0%, #0d47a1 100%);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        transform: translateY(-2px);
+    }
+
+    /* Download button */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
         color: white;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .stDownloadButton > button:hover {
+        background: linear-gradient(135deg, #388e3c 0%, #2e7d32 100%);
+    }
+
+    /* Metrics */
+    [data-testid="stMetricValue"] {
+        font-size: 28px;
+        font-weight: bold;
+        color: #1976D2;
+    }
+
+    /* Dataframes */
+    .dataframe {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Expanders */
+    .streamlit-expanderHeader {
+        background-color: #f5f7fa;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+
+    /* Sidebar */
+    .css-1d391kg {
+        background-color: #f8f9fa;
+    }
+
+    /* Footer */
+    .footer {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        border-top: 2px solid #e0e0e0;
+        margin-top: 50px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -171,6 +279,16 @@ def main():
 
     with tab6:
         about_page()
+
+    # Footer
+    st.markdown("---")
+    st.markdown("""
+    <div class='footer'>
+        <p><strong>VANTAGE F1</strong> - Valuating Advantage Numerically Through Analysis of Grid Effects</p>
+        <p>Powered by Random Forest ML | Data: 2018-2024 F1 Seasons | Accuracy: 0.57 MAE</p>
+        <p><a href='https://github.com/AsteriodBlues/Vantage' target='_blank'>GitHub</a> | Built with Streamlit & Plotly</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def home_page():
@@ -446,42 +564,57 @@ def single_position_prediction(demo_mode=False):
 
 
 def make_single_prediction(grid, circuit, team, driver, year, race_num, demo_mode):
-    """Make and display single prediction"""
+    """Make and display single prediction with error handling"""
 
-    if demo_mode:
-        # Demo calculations
-        import random
-        random.seed(grid + year + race_num)
-        base_finish = grid + random.gauss(0, 2.5)
-        predicted_finish = max(1, min(20, base_finish))
-        predicted_rounded = round(predicted_finish)
-        confidence_lower = max(1, predicted_finish - 2)
-        confidence_upper = min(20, predicted_finish + 2)
+    try:
+        if demo_mode:
+            # Demo calculations
+            import random
+            random.seed(grid + year + race_num)
+            base_finish = grid + random.gauss(0, 2.5)
+            predicted_finish = max(1, min(20, base_finish))
+            predicted_rounded = round(predicted_finish)
+            confidence_lower = max(1, predicted_finish - 2)
+            confidence_upper = min(20, predicted_finish + 2)
 
-        # Demo probabilities
-        win_prob = max(0, min(1, 2.0 / max(1, predicted_finish))) if predicted_finish < 3 else 0.05 / max(1, predicted_finish)
-        podium_prob = max(0, min(1, 4.0 / max(1, predicted_finish))) if predicted_finish < 6 else 0.2 / max(1, predicted_finish)
-        points_prob = max(0, min(1, 11.0 / max(1, predicted_finish))) if predicted_finish < 15 else 0.5 / max(1, predicted_finish)
+            # Demo probabilities
+            win_prob = max(0, min(1, 2.0 / max(1, predicted_finish))) if predicted_finish < 3 else 0.05 / max(1, predicted_finish)
+            podium_prob = max(0, min(1, 4.0 / max(1, predicted_finish))) if predicted_finish < 6 else 0.2 / max(1, predicted_finish)
+            points_prob = max(0, min(1, 11.0 / max(1, predicted_finish))) if predicted_finish < 15 else 0.5 / max(1, predicted_finish)
 
-    else:
-        # Real prediction
-        with st.spinner("Calculating prediction..."):
-            result = st.session_state.prediction_pipeline.predict(
-                grid_position=grid,
-                circuit_name=circuit,
-                team=team,
-                driver=driver if driver else f"Driver {grid}",
-                year=year,
-                race_number=race_num
-            )
+        else:
+            # Real prediction with error handling
+            with st.spinner("Calculating prediction..."):
+                try:
+                    result = st.session_state.prediction_pipeline.predict(
+                        grid_position=grid,
+                        circuit_name=circuit,
+                        team=team,
+                        driver=driver if driver else f"Driver {grid}",
+                        year=year,
+                        race_number=race_num
+                    )
+                except ValueError as e:
+                    st.error(f"Invalid input: {str(e)}")
+                    return
+                except KeyError as e:
+                    st.error(f"Missing data for: {str(e)}")
+                    return
+                except Exception as e:
+                    st.error(f"Prediction error: {str(e)}")
+                    return
 
-        predicted_finish = result['predicted_finish']
-        predicted_rounded = result['predicted_finish_rounded']
-        confidence_lower = result['confidence_interval']['lower']
-        confidence_upper = result['confidence_interval']['upper']
-        win_prob = result['probabilities']['win']
-        podium_prob = result['probabilities']['podium']
-        points_prob = result['probabilities']['points']
+            predicted_finish = result['predicted_finish']
+            predicted_rounded = result['predicted_finish_rounded']
+            confidence_lower = result['confidence_interval']['lower']
+            confidence_upper = result['confidence_interval']['upper']
+            win_prob = result['probabilities']['win']
+            podium_prob = result['probabilities']['podium']
+            points_prob = result['probabilities']['points']
+
+    except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
+        return
 
     # Display results
     st.markdown("---")
@@ -580,17 +713,67 @@ def make_single_prediction(grid, circuit, team, driver, year, race_num, demo_mod
     st.plotly_chart(fig_confidence, use_container_width=True)
 
     # Save to history
-    st.session_state.predictions_history.append({
+    prediction_record = {
         'Timestamp': datetime.now().strftime('%Y-%m-%d %H:%M'),
         'Circuit': circuit,
         'Team': team,
+        'Driver': driver if driver else f"Driver {grid}",
         'Grid': f"P{grid}",
         'Predicted': f"P{predicted_rounded}",
         'Change': f"{position_change:+d}",
-        'Win%': f"{win_prob*100:.1f}%"
-    })
+        'Win%': f"{win_prob*100:.1f}%",
+        'Podium%': f"{podium_prob*100:.1f}%",
+        'Points%': f"{points_prob*100:.1f}%"
+    }
+    st.session_state.predictions_history.append(prediction_record)
 
-    st.success("✅ Prediction added to history!")
+    # Export options
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        st.success("✅ Prediction added to history!")
+
+    with col2:
+        # Export as JSON
+        export_data = {
+            'prediction': {
+                'grid_position': grid,
+                'circuit': circuit,
+                'team': team,
+                'driver': driver if driver else f"Driver {grid}",
+                'year': year,
+                'race_number': race_num
+            },
+            'results': {
+                'predicted_finish': float(predicted_finish),
+                'predicted_finish_rounded': predicted_rounded,
+                'position_change': position_change,
+                'confidence_interval': {
+                    'lower': float(confidence_lower),
+                    'upper': float(confidence_upper)
+                },
+                'probabilities': {
+                    'win': float(win_prob),
+                    'podium': float(podium_prob),
+                    'points': float(points_prob)
+                }
+            }
+        }
+        st.download_button(
+            label="📥 Export JSON",
+            data=json.dumps(export_data, indent=2),
+            file_name=f"prediction_{circuit}_{grid}.json",
+            mime="application/json"
+        )
+
+    with col3:
+        # Export as CSV
+        csv_data = pd.DataFrame([prediction_record]).to_csv(index=False)
+        st.download_button(
+            label="📥 Export CSV",
+            data=csv_data,
+            file_name=f"prediction_{circuit}_{grid}.csv",
+            mime="text/csv"
+        )
 
 
 def create_grid_visual(position):
@@ -793,6 +976,40 @@ def simulate_full_race(grid, circuit, year, race_num, demo_mode):
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+    # Export options for grid simulation
+    st.markdown("### 📥 Export Results")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Export as CSV
+        csv_export = pred_df[['Final Position', 'Driver', 'Team', 'Grid', 'Predicted Finish', 'Change']].copy()
+        csv_data = csv_export.to_csv(index=False)
+        st.download_button(
+            label="📥 Download Results (CSV)",
+            data=csv_data,
+            file_name=f"race_simulation_{circuit}_{year}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+    with col2:
+        # Export as JSON
+        json_export = {
+            'race_info': {
+                'circuit': circuit,
+                'year': year,
+                'race_number': race_num
+            },
+            'results': pred_df.to_dict('records')
+        }
+        st.download_button(
+            label="📥 Download Results (JSON)",
+            data=json.dumps(json_export, indent=2),
+            file_name=f"race_simulation_{circuit}_{year}.json",
+            mime="application/json",
+            use_container_width=True
+        )
 
 
 def circuit_analysis_page():
