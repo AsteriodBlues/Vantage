@@ -272,6 +272,15 @@ st.markdown("""
         background: linear-gradient(180deg, #f8f9fa 0%, #f4f6f8 100%);
         border-right: 1px solid #e8eaed;
     }
+    section[data-testid="stSidebar"] h3 {
+        color: #2d3748;
+        font-weight: 700;
+    }
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] li,
+    section[data-testid="stSidebar"] a {
+        color: #4a5568;
+    }
 
     /* Footer */
     .footer {
@@ -349,25 +358,30 @@ def main():
 
     # Sidebar
     with st.sidebar:
-        st.markdown("### 🏎️ VANTAGE F1")
-        st.markdown("**V**aluating **A**dvantage **N**umerically **T**hrough **A**nalysis of **G**rid **E**ffects")
+        st.markdown("""
+        <h3 style='color: #2d3748; font-weight: 700; margin-bottom: 8px;'>🏎️ VANTAGE F1</h3>
+        <p style='color: #4a5568; font-weight: 600; font-size: 0.9rem; line-height: 1.5; margin-bottom: 20px;'>
+            <strong>V</strong>aluating <strong>A</strong>dvantage <strong>N</strong>umerically
+            <strong>T</strong>hrough <strong>A</strong>nalysis of <strong>G</strong>rid <strong>E</strong>ffects
+        </p>
+        """, unsafe_allow_html=True)
 
         st.markdown("---")
-        st.markdown("### 📊 Project Stats")
+        st.markdown("<h3 style='color: #2d3748; font-weight: 700;'>📊 Project Stats</h3>", unsafe_allow_html=True)
         st.metric("Races Analyzed", "780")
         st.metric("Years Covered", "2018-2024")
         st.metric("Model Accuracy (MAE)", "0.57 positions")
         st.metric("Test R²", "0.971")
 
         st.markdown("---")
-        st.markdown("### 🔗 Links")
+        st.markdown("<h3 style='color: #2d3748; font-weight: 700;'>🔗 Links</h3>", unsafe_allow_html=True)
         st.markdown("[GitHub Repository](https://github.com/AsteriodBlues/Vantage)")
         st.markdown("[API Documentation](../docs/api_specification.md)")
         st.markdown("[Model Performance](../docs/model_performance.md)")
 
     # Main content
-    st.title("🏁 VANTAGE F1 Prediction Dashboard")
-    st.markdown("**Quantifying Grid Position Advantage in Formula 1 Racing**")
+    st.markdown("<h1 style='color: #2d3748;'>🏁 VANTAGE F1 Prediction Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #4a5568; font-weight: 600; font-size: 1.1rem;'>Quantifying Grid Position Advantage in Formula 1 Racing</p>", unsafe_allow_html=True)
 
     # Create tabs
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
