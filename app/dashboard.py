@@ -269,12 +269,14 @@ st.markdown("""
         padding: 12px 16px;
         font-size: 15px;
         color: #2d3748;
+        background-color: #ffffff !important;
     }
     .stSelectbox > div > div:focus-within,
     .stNumberInput > div > div > input:focus,
     .stTextInput > div > div > input:focus {
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background-color: #ffffff !important;
     }
 
     /* Input labels */
@@ -284,6 +286,51 @@ st.markdown("""
     .stSlider label {
         color: #2d3748;
         font-weight: 600;
+    }
+
+    /* Dropdown/Select specific styling */
+    .stSelectbox select,
+    .stSelectbox input {
+        background-color: #ffffff !important;
+        color: #2d3748 !important;
+    }
+
+    /* Selectbox dropdown */
+    div[data-baseweb="select"] {
+        background-color: #ffffff !important;
+    }
+    div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        color: #2d3748 !important;
+    }
+
+    /* Dropdown menu */
+    ul[role="listbox"] {
+        background-color: #ffffff !important;
+        border: 2px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+    }
+    ul[role="listbox"] li {
+        color: #2d3748 !important;
+        background-color: #ffffff !important;
+    }
+    ul[role="listbox"] li:hover {
+        background-color: #f7fafc !important;
+        color: #667eea !important;
+    }
+
+    /* Text input fields */
+    input[type="text"],
+    input[type="number"] {
+        background-color: #ffffff !important;
+        color: #2d3748 !important;
+    }
+
+    /* Placeholder text */
+    input::placeholder,
+    textarea::placeholder {
+        color: #a0aec0 !important;
+        opacity: 1;
     }
 
     /* Modern slider */
