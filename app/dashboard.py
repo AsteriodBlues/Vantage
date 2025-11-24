@@ -45,17 +45,23 @@ st.markdown("""
     /* Main container */
     .main {
         padding: 0rem 1rem;
-        background: linear-gradient(180deg, #ffffff 0%, #f8f9fc 100%);
+        background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
+    }
+
+    /* Page background */
+    .stApp {
+        background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
     }
 
     /* Modern glass morphism tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 12px;
-        background: rgba(255, 255, 255, 0.7);
+        background: rgba(250, 251, 252, 0.8);
         backdrop-filter: blur(10px);
         padding: 8px;
         border-radius: 16px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(0, 0, 0, 0.03);
     }
     .stTabs [data-baseweb="tab-list"] button {
         background: transparent;
@@ -77,56 +83,56 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
-    /* Modern metric cards with neumorphism */
+    /* Modern metric cards with soft neumorphism */
     .metric-card {
-        background: #ffffff;
+        background: #f8f9fa;
         padding: 28px;
         border-radius: 20px;
         box-shadow:
-            12px 12px 24px rgba(174, 174, 192, 0.4),
-            -12px -12px 24px rgba(255, 255, 255, 0.9);
+            8px 8px 16px rgba(174, 174, 192, 0.2),
+            -8px -8px 16px rgba(255, 255, 255, 0.8);
         text-align: center;
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.03);
     }
     .metric-card:hover {
-        transform: translateY(-8px) scale(1.02);
+        transform: translateY(-6px) scale(1.01);
         box-shadow:
-            16px 16px 32px rgba(174, 174, 192, 0.5),
-            -16px -16px 32px rgba(255, 255, 255, 1),
-            0 0 40px rgba(102, 126, 234, 0.2);
+            10px 10px 20px rgba(174, 174, 192, 0.25),
+            -10px -10px 20px rgba(255, 255, 255, 0.9),
+            0 0 30px rgba(102, 126, 234, 0.15);
     }
 
     /* Glassmorphism prediction box */
     .prediction-box {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.06) 0%, rgba(118, 75, 162, 0.06) 100%);
         backdrop-filter: blur(16px);
         padding: 28px;
         border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(102, 126, 234, 0.15);
         margin: 20px 0;
         box-shadow:
-            0 8px 32px rgba(102, 126, 234, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            0 4px 16px rgba(102, 126, 234, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.4);
     }
 
     /* Modern alert boxes */
     .warning-box {
-        background: linear-gradient(135deg, #FFF4E6 0%, #FFE8CC 100%);
+        background: linear-gradient(135deg, #FFF8F0 0%, #FFF3E5 100%);
         padding: 24px;
         border-radius: 16px;
         border-left: 4px solid #FF9800;
         margin: 20px 0;
-        box-shadow: 0 4px 16px rgba(255, 152, 0, 0.15);
+        box-shadow: 0 2px 8px rgba(255, 152, 0, 0.08);
     }
 
     .success-box {
-        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+        background: linear-gradient(135deg, #F1F8F4 0%, #E8F5E9 100%);
         padding: 24px;
         border-radius: 16px;
         border-left: 4px solid #4CAF50;
         margin: 20px 0;
-        box-shadow: 0 4px 16px rgba(76, 175, 80, 0.15);
+        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.08);
     }
 
     /* Modern typography */
@@ -263,8 +269,8 @@ st.markdown("""
 
     /* Sidebar styling */
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #f7fafc 0%, #ffffff 100%);
-        border-right: 1px solid #e2e8f0;
+        background: linear-gradient(180deg, #f8f9fa 0%, #f4f6f8 100%);
+        border-right: 1px solid #e8eaed;
     }
 
     /* Footer */
@@ -272,8 +278,8 @@ st.markdown("""
         text-align: center;
         padding: 32px 20px;
         color: #718096;
-        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-        border-top: 1px solid #e2e8f0;
+        background: linear-gradient(135deg, #f8f9fa 0%, #f4f6f8 100%);
+        border-top: 1px solid #e8eaed;
         margin-top: 60px;
         border-radius: 20px 20px 0 0;
         font-size: 14px;
