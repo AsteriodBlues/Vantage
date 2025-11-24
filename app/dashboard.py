@@ -844,9 +844,9 @@ def circuit_analysis_page():
 
 
 def visualization_page():
-    """Visualizations and analysis page"""
+    """Comprehensive visualizations and analysis page"""
 
-    st.markdown("## 📈 Data Visualizations")
+    st.markdown("## 📈 Data Visualizations & Insights")
 
     df = load_historical_data()
 
@@ -854,35 +854,98 @@ def visualization_page():
         st.warning("Historical data not available for visualization")
         return
 
-    # Grid vs Finish scatter
-    st.markdown("### Grid Position vs Finish Position")
+    # Create tabs for different visualization categories
+    viz_tabs = st.tabs([
+        "📊 Grid Analysis",
+        "🏎️ Circuit Patterns",
+        "📈 Performance Trends",
+        "🎯 Win Probability"
+    ])
 
+    with viz_tabs[0]:
+        grid_analysis_viz(df)
+
+    with viz_tabs[1]:
+        circuit_patterns_viz(df)
+
+    with viz_tabs[2]:
+        performance_trends_viz(df)
+
+    with viz_tabs[3]:
+        win_probability_viz(df)
+
+
+def grid_analysis_viz(df):
+    """Grid position advantage analysis visualizations"""
+
+    st.markdown("### 🎯 Grid Position Advantage Analysis")
+
+    # Calculate grid statistics
     if 'GridPosition' in df.columns and 'Position_raw' in df.columns:
-        sample_df = df.sample(min(500, len(df)))
+        grid_stats = df.groupby('GridPosition').agg({
+            'Position_raw': ['mean', 'std', 'min', 'max'],
+            'position_change': 'mean'
+        }).round(2)
 
-        fig = px.scatter(
-            sample_df,
-            x='GridPosition',
-            y='Position_raw',
-            title='Historical Grid vs Finish Positions',
-            labels={'GridPosition': 'Grid Position', 'Position_raw': 'Finish Position'},
-            opacity=0.6
-        )
+        col1, col2 = st.columns([2, 1])
 
-        # Add diagonal line
-        fig.add_trace(go.Scatter(
-            x=[1, 20],
-            y=[1, 20],
-            mode='lines',
-            line=dict(dash='dash', color='red'),
-            name='No Change Line'
-        ))
+        with col1:
+            # Main advantage plot with confidence bands
+            fig = go.Figure()
 
-        fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+            grid_positions = sorted(df['GridPosition'].unique())
+            avg_finish = [grid_stats.loc[p, ('Position_raw', 'mean')] for p in grid_positions if p in grid_stats.index]
+            std_finish = [grid_stats.loc[p, ('Position_raw', 'std')] for p in grid_positions if p in grid_stats.index]
 
-    # Feature distributions
-    st.markdown("### Feature Distributions")
+            # Average line
+            fig.add_trace(go.Scatter(
+                x=grid_positions[:len(avg_finish)],
+                y=avg_finish,
+                mode='lines+markers',
+                name='Average Finish',
+                line=dict(color='#2196F3', width=3),
+                marker=dict(size=8)
+            ))
+
+            # No change line
+            fig.add_trace(go.Scatter(
+                x=[1, 20],
+                y=[1, 20],
+                mode='lines',
+                line=dict(dash='dash', color='red', width=2),
+                name='No Change'
+            ))
+
+            fig.update_layout(
+                title='Grid Position vs Average Finish',
+                xaxis_title='Grid Position',
+                yaxis_title='Average Finish Position',
+                height=500,
+                hovermode='x unified'
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            st.markdown("#### 📊 Key Statistics")
+
+            pole_data = df[df['GridPosition'] == 1]
+            if len(pole_data) > 0:
+                pole_win_rate = (pole_data['Position_raw'] == 1).mean() * 100
+                st.metric("Pole Win Rate", f"{pole_win_rate:.1f}%")
+
+            top3_data = df[df['GridPosition'] <= 3]
+            if len(top3_data) > 0:
+                top3_win = (top3_data['Position_raw'] == 1).mean() * 100
+                st.metric("Top 3 Win Rate", f"{top3_win:.1f}%")
+
+            if 'position_change' in df.columns:
+                avg_change = df['position_change'].mean()
+                st.metric("Avg Position Change", f"{avg_change:+.2f}")
+
+    # Position change distribution
+    st.markdown("---")
+    st.markdown("### Position Change Patterns")
 
     col1, col2 = st.columns(2)
 
@@ -893,20 +956,289 @@ def visualization_page():
                 x='position_change',
                 nbins=40,
                 title='Distribution of Position Changes',
-                labels={'position_change': 'Position Change'}
+                labels={'position_change': 'Position Change'},
+                color_discrete_sequence=['#667eea']
             )
+            fig.add_vline(x=0, line_dash="dash", line_color="red")
             st.plotly_chart(fig, use_container_width=True)
 
     with col2:
-        if 'team_momentum' in df.columns:
-            fig = px.box(
-                df,
-                x='TeamName' if 'TeamName' in df.columns else None,
-                y='team_momentum',
-                title='Team Momentum Distribution'
+        if 'GridPosition' in df.columns and 'Position_raw' in df.columns:
+            # Scatter plot
+            sample_df = df.sample(min(500, len(df)))
+            fig = px.scatter(
+                sample_df,
+                x='GridPosition',
+                y='Position_raw',
+                opacity=0.4,
+                title='Grid vs Finish Scatter',
+                labels={'GridPosition': 'Grid Position', 'Position_raw': 'Finish Position'}
             )
-            fig.update_xaxes(tickangle=45)
+            fig.add_trace(go.Scatter(x=[1, 20], y=[1, 20], mode='lines',
+                                    line=dict(dash='dash', color='red'), name='No Change'))
             st.plotly_chart(fig, use_container_width=True)
+
+
+def circuit_patterns_viz(df):
+    """Circuit-specific pattern visualizations"""
+
+    st.markdown("### 🏎️ Circuit Characteristics")
+
+    circuit_data = load_circuit_data()
+
+    if circuit_data:
+        # Prepare circuit comparison data
+        circuits_list = []
+        for name, data in list(circuit_data.items())[:15]:
+            circuits_list.append({
+                'Circuit': name,
+                'Pole Win Rate': data.get('circuit_pole_win_rate', 0) * 100,
+                'Overtaking Difficulty': data.get('overtaking_difficulty_index', 50),
+                'DNF Rate': data.get('circuit_dnf_rate', 0),
+                'Avg Changes': abs(data.get('circuit_avg_pos_change', 0))
+            })
+
+        circuits_df = pd.DataFrame(circuits_list)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Pole win rate comparison
+            fig = px.bar(
+                circuits_df.sort_values('Pole Win Rate', ascending=False).head(10),
+                x='Pole Win Rate',
+                y='Circuit',
+                orientation='h',
+                title='Top 10 Circuits by Pole Win Rate',
+                color='Pole Win Rate',
+                color_continuous_scale='Blues'
+            )
+            fig.update_layout(yaxis={'categoryorder': 'total ascending'})
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            # Overtaking difficulty
+            fig = px.bar(
+                circuits_df.sort_values('Overtaking Difficulty', ascending=False).head(10),
+                x='Overtaking Difficulty',
+                y='Circuit',
+                orientation='h',
+                title='Most Difficult Circuits for Overtaking',
+                color='Overtaking Difficulty',
+                color_continuous_scale='Reds'
+            )
+            fig.update_layout(yaxis={'categoryorder': 'total ascending'})
+            st.plotly_chart(fig, use_container_width=True)
+
+        # Circuit characteristics radar
+        st.markdown("---")
+        if len(circuits_df) >= 5:
+            selected_circuits = st.multiselect(
+                "Select circuits to compare (max 5):",
+                circuits_df['Circuit'].tolist(),
+                default=circuits_df['Circuit'].head(3).tolist()[:3]
+            )
+
+            if selected_circuits:
+                fig = go.Figure()
+
+                for circuit in selected_circuits[:5]:
+                    circuit_row = circuits_df[circuits_df['Circuit'] == circuit].iloc[0]
+                    fig.add_trace(go.Scatterpolar(
+                        r=[
+                            circuit_row['Pole Win Rate'] / 100,
+                            circuit_row['Overtaking Difficulty'] / 100,
+                            circuit_row['DNF Rate'] / 20,
+                            circuit_row['Avg Changes'] / 5
+                        ],
+                        theta=['Pole Win %', 'Overtaking', 'DNF Risk', 'Position Changes'],
+                        fill='toself',
+                        name=circuit
+                    ))
+
+                fig.update_layout(
+                    polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+                    showlegend=True,
+                    title="Circuit Characteristics Comparison"
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+
+
+def performance_trends_viz(df):
+    """Performance trends over time"""
+
+    st.markdown("### 📈 Historical Performance Trends")
+
+    if 'year' not in df.columns:
+        st.info("Year data not available for trend analysis")
+        return
+
+    # Yearly statistics
+    yearly_stats = df.groupby('year').agg({
+        'Position_raw': 'mean',
+        'position_change': 'std',
+        'GridPosition': 'count'
+    }).reset_index()
+    yearly_stats.columns = ['Year', 'Avg Finish', 'Position Variance', 'Races']
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Position variance over time
+        fig = px.line(
+            yearly_stats,
+            x='Year',
+            y='Position Variance',
+            title='Position Change Variance by Year',
+            markers=True
+        )
+        fig.update_layout(yaxis_title='Standard Deviation')
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        # Race count by year
+        fig = px.bar(
+            yearly_stats,
+            x='Year',
+            y='Races',
+            title='Races Analyzed by Year',
+            color='Races',
+            color_continuous_scale='Viridis'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Team performance evolution
+    if 'TeamName' in df.columns:
+        st.markdown("---")
+        st.markdown("### Team Performance Over Time")
+
+        top_teams = df['TeamName'].value_counts().head(6).index.tolist()
+        team_yearly = df[df['TeamName'].isin(top_teams)].groupby(['year', 'TeamName']).agg({
+            'Position_raw': 'mean'
+        }).reset_index()
+
+        fig = px.line(
+            team_yearly,
+            x='year',
+            y='Position_raw',
+            color='TeamName',
+            title='Average Finish Position by Team',
+            markers=True
+        )
+        fig.update_layout(
+            xaxis_title='Year',
+            yaxis_title='Average Finish Position',
+            yaxis_autorange='reversed'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
+def win_probability_viz(df):
+    """Win probability analysis"""
+
+    st.markdown("### 🎯 Win Probability Analysis")
+
+    if 'GridPosition' not in df.columns or 'Position_raw' not in df.columns:
+        st.info("Insufficient data for win probability analysis")
+        return
+
+    # Win probability by grid position
+    win_prob_data = []
+    for grid_pos in range(1, 21):
+        grid_data = df[df['GridPosition'] == grid_pos]
+        if len(grid_data) > 0:
+            win_rate = (grid_data['Position_raw'] == 1).mean() * 100
+            podium_rate = (grid_data['Position_raw'] <= 3).mean() * 100
+            points_rate = (grid_data['Position_raw'] <= 10).mean() * 100
+
+            win_prob_data.append({
+                'Grid Position': grid_pos,
+                'Win %': win_rate,
+                'Podium %': podium_rate,
+                'Points %': points_rate
+            })
+
+    prob_df = pd.DataFrame(win_prob_data)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        # Win probability
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=prob_df['Grid Position'],
+            y=prob_df['Win %'],
+            name='Win',
+            marker_color='#FFD700'
+        ))
+        fig.add_trace(go.Bar(
+            x=prob_df['Grid Position'],
+            y=prob_df['Podium %'],
+            name='Podium',
+            marker_color='#C0C0C0'
+        ))
+        fig.add_trace(go.Bar(
+            x=prob_df['Grid Position'],
+            y=prob_df['Points %'],
+            name='Points',
+            marker_color='#CD7F32'
+        ))
+
+        fig.update_layout(
+            title='Success Probability by Grid Position',
+            xaxis_title='Grid Position',
+            yaxis_title='Probability (%)',
+            barmode='group'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        # Cumulative probability
+        fig = go.Figure()
+        for col_name, color in [('Win %', '#FFD700'), ('Podium %', '#C0C0C0'), ('Points %', '#CD7F32')]:
+            fig.add_trace(go.Scatter(
+                x=prob_df['Grid Position'],
+                y=prob_df[col_name],
+                mode='lines+markers',
+                name=col_name.replace(' %', ''),
+                line=dict(width=3, color=color),
+                marker=dict(size=8)
+            ))
+
+        fig.update_layout(
+            title='Success Probability Trends',
+            xaxis_title='Grid Position',
+            yaxis_title='Probability (%)',
+            hovermode='x unified'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Position gain/loss probability
+    st.markdown("---")
+    st.markdown("### Expected Position Changes")
+
+    if 'position_change' in df.columns:
+        change_by_grid = df.groupby('GridPosition')['position_change'].agg(['mean', 'std']).reset_index()
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=change_by_grid['GridPosition'],
+            y=change_by_grid['mean'],
+            error_y=dict(type='data', array=change_by_grid['std']),
+            marker_color=['#4CAF50' if x > 0 else '#F44336' if x < 0 else '#9E9E9E'
+                         for x in change_by_grid['mean']]
+        ))
+
+        fig.update_layout(
+            title='Average Position Change by Grid Position',
+            xaxis_title='Grid Position',
+            yaxis_title='Avg Position Change',
+            showlegend=False
+        )
+        fig.add_hline(y=0, line_dash="dash", line_color="black")
+
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def about_page():
