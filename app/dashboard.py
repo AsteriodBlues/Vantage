@@ -137,13 +137,10 @@ st.markdown("""
 
     /* Modern typography */
     h1 {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #2d3748;
         font-weight: 700;
         font-size: 3rem;
         letter-spacing: -0.02em;
-        text-shadow: none;
     }
     h2 {
         color: #2d3748;
@@ -165,9 +162,22 @@ st.markdown("""
         border-radius: 2px;
     }
     h3 {
-        color: #4a5568;
+        color: #2d3748;
         font-weight: 600;
         font-size: 1.5rem;
+    }
+    h4 {
+        color: #4a5568;
+        font-weight: 600;
+    }
+    p {
+        color: #4a5568;
+    }
+    li {
+        color: #4a5568;
+    }
+    strong {
+        color: #2d3748;
     }
 
     /* Modern buttons */
@@ -239,10 +249,14 @@ st.markdown("""
         padding: 16px;
         border: 1px solid #e2e8f0;
         transition: all 0.3s;
+        color: #2d3748;
     }
     .streamlit-expanderHeader:hover {
         background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    .streamlit-expanderHeader p {
+        color: #2d3748;
     }
 
     /* Modern inputs */
@@ -254,12 +268,22 @@ st.markdown("""
         transition: all 0.3s;
         padding: 12px 16px;
         font-size: 15px;
+        color: #2d3748;
     }
     .stSelectbox > div > div:focus-within,
     .stNumberInput > div > div > input:focus,
     .stTextInput > div > div > input:focus {
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    /* Input labels */
+    .stSelectbox label,
+    .stNumberInput label,
+    .stTextInput label,
+    .stSlider label {
+        color: #2d3748;
+        font-weight: 600;
     }
 
     /* Modern slider */
@@ -286,12 +310,15 @@ st.markdown("""
     .footer {
         text-align: center;
         padding: 32px 20px;
-        color: #718096;
+        color: #4a5568;
         background: linear-gradient(135deg, #f8f9fa 0%, #f4f6f8 100%);
         border-top: 1px solid #e8eaed;
         margin-top: 60px;
         border-radius: 20px 20px 0 0;
         font-size: 14px;
+    }
+    .footer strong {
+        color: #2d3748;
     }
     .footer a {
         color: #667eea;
@@ -302,6 +329,11 @@ st.markdown("""
     .footer a:hover {
         color: #764ba2;
         text-decoration: underline;
+    }
+
+    /* Markdown text */
+    .stMarkdown {
+        color: #4a5568;
     }
 
     /* Smooth animations */
