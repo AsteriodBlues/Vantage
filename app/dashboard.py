@@ -32,155 +32,266 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for professional styling
+# Modern CSS styling with dark mode support
 st.markdown("""
 <style>
-    /* Main container padding */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    /* Global styles */
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Main container */
     .main {
         padding: 0rem 1rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8f9fc 100%);
     }
 
-    /* Tab styling */
+    /* Modern glass morphism tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+        gap: 12px;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        padding: 8px;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
     }
     .stTabs [data-baseweb="tab-list"] button {
-        background-color: #f0f2f6;
-        border-radius: 8px 8px 0 0;
-        padding: 10px 20px;
+        background: transparent;
+        border-radius: 12px;
+        padding: 12px 24px;
         font-weight: 500;
+        font-size: 15px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 2px solid transparent;
+    }
+    .stTabs [data-baseweb="tab-list"] button:hover {
+        background: rgba(25, 118, 210, 0.1);
+        transform: translateY(-2px);
     }
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
-        background-color: #1976D2;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-    }
-    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
-        font-size: 18px;
-    }
-
-    /* Custom cards */
-    .metric-card {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        text-align: center;
-        transition: transform 0.2s;
-    }
-    .metric-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
-
-    /* Prediction box */
-    .prediction-box {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-        padding: 20px;
-        border-radius: 12px;
-        border-left: 5px solid #2196F3;
-        margin: 15px 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    /* Warning box */
-    .warning-box {
-        background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-        padding: 20px;
-        border-radius: 12px;
-        border-left: 5px solid #ff9800;
-        margin: 15px 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    /* Success box */
-    .success-box {
-        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-        padding: 20px;
-        border-radius: 12px;
-        border-left: 5px solid #4caf50;
-        margin: 15px 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    /* Headers */
-    h1 {
-        color: #1976D2;
-        font-family: 'Arial Black', sans-serif;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-    }
-    h2 {
-        color: #1565C0;
-        border-bottom: 3px solid #1976D2;
-        padding-bottom: 10px;
-    }
-    h3 {
-        color: #1976D2;
-    }
-
-    /* Buttons */
-    .stButton > button {
-        background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
-        color: white;
-        font-weight: bold;
-        border: none;
-        border-radius: 8px;
-        padding: 12px 24px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        transition: all 0.3s;
-    }
-    .stButton > button:hover {
-        background: linear-gradient(135deg, #1565C0 0%, #0d47a1 100%);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
         transform: translateY(-2px);
     }
 
-    /* Download button */
-    .stDownloadButton > button {
-        background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+    /* Modern metric cards with neumorphism */
+    .metric-card {
+        background: #ffffff;
+        padding: 28px;
+        border-radius: 20px;
+        box-shadow:
+            12px 12px 24px rgba(174, 174, 192, 0.4),
+            -12px -12px 24px rgba(255, 255, 255, 0.9);
+        text-align: center;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+    .metric-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow:
+            16px 16px 32px rgba(174, 174, 192, 0.5),
+            -16px -16px 32px rgba(255, 255, 255, 1),
+            0 0 40px rgba(102, 126, 234, 0.2);
+    }
+
+    /* Glassmorphism prediction box */
+    .prediction-box {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        backdrop-filter: blur(16px);
+        padding: 28px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        margin: 20px 0;
+        box-shadow:
+            0 8px 32px rgba(102, 126, 234, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    /* Modern alert boxes */
+    .warning-box {
+        background: linear-gradient(135deg, #FFF4E6 0%, #FFE8CC 100%);
+        padding: 24px;
+        border-radius: 16px;
+        border-left: 4px solid #FF9800;
+        margin: 20px 0;
+        box-shadow: 0 4px 16px rgba(255, 152, 0, 0.15);
+    }
+
+    .success-box {
+        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+        padding: 24px;
+        border-radius: 16px;
+        border-left: 4px solid #4CAF50;
+        margin: 20px 0;
+        box-shadow: 0 4px 16px rgba(76, 175, 80, 0.15);
+    }
+
+    /* Modern typography */
+    h1 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+        font-size: 3rem;
+        letter-spacing: -0.02em;
+        text-shadow: none;
+    }
+    h2 {
+        color: #2d3748;
+        font-weight: 600;
+        font-size: 2rem;
+        border-bottom: none;
+        padding-bottom: 8px;
+        position: relative;
+        letter-spacing: -0.01em;
+    }
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 60px;
+        height: 4px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 2px;
+    }
+    h3 {
+        color: #4a5568;
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+
+    /* Modern buttons */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        font-weight: bold;
+        font-weight: 600;
         border: none;
-        border-radius: 8px;
-        padding: 12px 24px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        border-radius: 12px;
+        padding: 14px 32px;
+        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 15px;
+        letter-spacing: 0.3px;
+    }
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.5);
+        transform: translateY(-3px);
+    }
+    .stButton > button:active {
+        transform: translateY(-1px);
+    }
+
+    /* Modern download button */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        color: white;
+        font-weight: 600;
+        border: none;
+        border-radius: 12px;
+        padding: 14px 32px;
+        box-shadow: 0 4px 16px rgba(72, 187, 120, 0.4);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .stDownloadButton > button:hover {
-        background: linear-gradient(135deg, #388e3c 0%, #2e7d32 100%);
+        background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+        box-shadow: 0 8px 24px rgba(72, 187, 120, 0.5);
+        transform: translateY(-3px);
     }
 
-    /* Metrics */
+    /* Modern metrics */
     [data-testid="stMetricValue"] {
-        font-size: 28px;
-        font-weight: bold;
-        color: #1976D2;
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
-
-    /* Dataframes */
-    .dataframe {
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    /* Expanders */
-    .streamlit-expanderHeader {
-        background-color: #f5f7fa;
-        border-radius: 8px;
+    [data-testid="stMetricLabel"] {
         font-weight: 500;
+        color: #718096;
+        font-size: 0.9rem;
     }
 
-    /* Sidebar */
-    .css-1d391kg {
-        background-color: #f8f9fa;
+    /* Modern dataframes */
+    .dataframe {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Modern expanders */
+    .streamlit-expanderHeader {
+        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 16px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s;
+    }
+    .streamlit-expanderHeader:hover {
+        background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Modern inputs */
+    .stSelectbox > div > div,
+    .stNumberInput > div > div > input,
+    .stTextInput > div > div > input {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s;
+        padding: 12px 16px;
+        font-size: 15px;
+    }
+    .stSelectbox > div > div:focus-within,
+    .stNumberInput > div > div > input:focus,
+    .stTextInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    /* Modern slider */
+    .stSlider > div > div > div {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f7fafc 0%, #ffffff 100%);
+        border-right: 1px solid #e2e8f0;
     }
 
     /* Footer */
     .footer {
         text-align: center;
-        padding: 20px;
-        color: #666;
-        border-top: 2px solid #e0e0e0;
-        margin-top: 50px;
+        padding: 32px 20px;
+        color: #718096;
+        background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+        border-top: 1px solid #e2e8f0;
+        margin-top: 60px;
+        border-radius: 20px 20px 0 0;
+        font-size: 14px;
+    }
+    .footer a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .footer a:hover {
+        color: #764ba2;
+        text-decoration: underline;
+    }
+
+    /* Smooth animations */
+    * {
+        transition: background-color 0.3s ease;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -294,20 +405,39 @@ def main():
 def home_page():
     """Create the home/landing page"""
 
-    # Hero section
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-        <div style='text-align: center; padding: 20px;'>
-            <h2>Welcome to VANTAGE F1</h2>
-            <p style='font-size: 18px;'>
-                Advanced machine learning for Formula 1 race prediction based on
-                starting grid positions and comprehensive race analysis.
-            </p>
+    # Modern hero section
+    st.markdown("""
+    <div style='text-align: center; padding: 60px 20px 40px 20px;
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+                border-radius: 24px; margin-bottom: 40px; border: 1px solid rgba(102, 126, 234, 0.1);'>
+        <div style='font-size: 4rem; margin-bottom: 20px;'>🏁</div>
+        <h1 style='font-size: 3.5rem; margin-bottom: 16px; letter-spacing: -0.03em;'>VANTAGE F1</h1>
+        <p style='font-size: 1.3rem; color: #718096; font-weight: 500; margin-bottom: 8px;'>
+            Valuating Advantage Numerically Through Analysis of Grid Effects
+        </p>
+        <p style='font-size: 1.1rem; color: #a0aec0; max-width: 700px; margin: 0 auto; line-height: 1.6;'>
+            Advanced machine learning for Formula 1 race prediction based on starting grid positions
+            and comprehensive race analysis.
+        </p>
+        <div style='margin-top: 32px; display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center;'>
+            <span style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                         color: white; padding: 8px 20px; border-radius: 20px;
+                         font-size: 0.9rem; font-weight: 600; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);'>
+                ⚡ 0.57 MAE
+            </span>
+            <span style='background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+                         color: white; padding: 8px 20px; border-radius: 20px;
+                         font-size: 0.9rem; font-weight: 600; box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);'>
+                📊 0.971 R²
+            </span>
+            <span style='background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+                         color: white; padding: 8px 20px; border-radius: 20px;
+                         font-size: 0.9rem; font-weight: 600; box-shadow: 0 4px 12px rgba(237, 137, 54, 0.3);'>
+                🚀 136 Features
+            </span>
         </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("---")
+    </div>
+    """, unsafe_allow_html=True)
 
     # Key metrics row
     st.markdown("### 🏆 Model Performance")
