@@ -1,0 +1,27 @@
+{
+  "circuit": "Monte Carlo",
+  "year": 2024,
+  "race_number": 7,
+  "grid": [
+    {"position": 1, "driver": "Charles Leclerc", "team": "Ferrari"},
+    {"position": 2, "driver": "Oscar Piastri", "team": "McLaren"},
+    {"position": 3, "driver": "Carlos Sainz", "team": "Ferrari"},
+    {"position": 4, "driver": "Lando Norris", "team": "McLaren"},
+    {"position": 5, "driver": "Max Verstappen", "team": "Red Bull"},
+    {"position": 6, "driver": "George Russell", "team": "Mercedes"},
+    {"position": 7, "driver": "Lewis Hamilton", "team": "Mercedes"},
+    {"position": 8, "driver": "Yuki Tsunoda", "team": "AlphaTauri"},
+    {"position": 9, "driver": "Alex Albon", "team": "Williams"},
+    {"position": 10, "driver": "Pierre Gasly", "team": "Alpine"},
+    {"position": 11, "driver": "Esteban Ocon", "team": "Alpine"},
+    {"position": 12, "driver": "Daniel Ricciardo", "team": "AlphaTauri"},
+    {"position": 13, "driver": "Fernando Alonso", "team": "Aston Martin"},
+    {"position": 14, "driver": "Lance Stroll", "team": "Aston Martin"},
+    {"position": 15, "driver": "Valtteri Bottas", "team": "Alfa Romeo"},
+    {"position": 16, "driver": "Guanyu Zhou", "team": "Alfa Romeo"},
+    {"position": 17, "driver": "Kevin Magnussen", "team": "Haas"},
+    {"position": 18, "driver": "Nico Hulkenberg", "team": "Haas"},
+    {"position": 19, "driver": "Logan Sargeant", "team": "Williams"},
+    {"position": 20, "driver": "Sergio Perez", "team": "Red Bull"}
+  ]
+}
