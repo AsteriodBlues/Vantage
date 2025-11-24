@@ -145,11 +145,12 @@ def main():
     st.markdown("**Quantifying Grid Position Advantage in Formula 1 Racing**")
 
     # Create tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🏠 Home",
         "🔮 Predictions",
         "🏎️ Circuit Analysis",
         "📈 Visualizations",
+        "🧠 Model Insights",
         "ℹ️ About"
     ])
 
@@ -166,6 +167,9 @@ def main():
         visualization_page()
 
     with tab5:
+        model_insights_page()
+
+    with tab6:
         about_page()
 
 
@@ -1239,6 +1243,399 @@ def win_probability_viz(df):
         fig.add_hline(y=0, line_dash="dash", line_color="black")
 
         st.plotly_chart(fig, use_container_width=True)
+
+
+def model_insights_page():
+    """Model interpretation and feature importance analysis"""
+
+    st.markdown("## 🧠 Model Insights & Feature Importance")
+
+    # Load model
+    pipeline = load_prediction_pipeline()
+
+    if pipeline is None:
+        st.warning("⚠️ Model not available. Feature importance analysis requires the production model.")
+        return
+
+    # Create sub-tabs
+    insight_tabs = st.tabs([
+        "📊 Feature Importance",
+        "🔍 Feature Categories",
+        "📈 Model Performance",
+        "🎯 Prediction Analysis"
+    ])
+
+    with insight_tabs[0]:
+        feature_importance_viz(pipeline)
+
+    with insight_tabs[1]:
+        feature_categories_viz(pipeline)
+
+    with insight_tabs[2]:
+        model_performance_viz(pipeline)
+
+    with insight_tabs[3]:
+        prediction_analysis_viz(pipeline)
+
+
+def feature_importance_viz(pipeline):
+    """Display feature importance analysis"""
+
+    st.markdown("### Top Feature Importance")
+    st.markdown("Features that have the strongest impact on race outcome predictions:")
+
+    # Get feature importances from the model
+    if hasattr(pipeline.model, 'feature_importances_'):
+        importances = pipeline.model.feature_importances_
+        feature_names = pipeline.feature_names
+
+        # Create dataframe
+        importance_df = pd.DataFrame({
+            'Feature': feature_names,
+            'Importance': importances
+        }).sort_values('Importance', ascending=False)
+
+        # Top 20 features
+        top_features = importance_df.head(20)
+
+        fig = px.bar(
+            top_features,
+            x='Importance',
+            y='Feature',
+            orientation='h',
+            title='Top 20 Most Important Features',
+            color='Importance',
+            color_continuous_scale='Blues'
+        )
+        fig.update_layout(
+            height=600,
+            yaxis={'categoryorder': 'total ascending'},
+            showlegend=False
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Feature importance summary
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric(
+                "Most Important Feature",
+                top_features.iloc[0]['Feature'],
+                f"{top_features.iloc[0]['Importance']:.3f}"
+            )
+
+        with col2:
+            top_10_sum = top_features.head(10)['Importance'].sum()
+            st.metric(
+                "Top 10 Features Impact",
+                f"{top_10_sum:.1%}",
+                "of total importance"
+            )
+
+        with col3:
+            total_features = len(feature_names)
+            st.metric(
+                "Total Features",
+                total_features,
+                "engineered"
+            )
+
+        # Show full table in expander
+        with st.expander("View All Feature Importances"):
+            st.dataframe(
+                importance_df,
+                use_container_width=True,
+                height=400
+            )
+    else:
+        st.info("Feature importance not available for this model type.")
+
+
+def feature_categories_viz(pipeline):
+    """Visualize features grouped by category"""
+
+    st.markdown("### Feature Categories Breakdown")
+    st.markdown("Features are organized into strategic categories:")
+
+    # Define feature categories
+    categories = {
+        'Grid Position': ['GridPosition', 'grid_squared', 'grid_cubed', 'grid_log', 'grid_sqrt',
+                         'front_row', 'top_three', 'top_five', 'top_ten', 'back_half',
+                         'grid_side', 'grid_side_clean', 'grid_row'],
+        'Temporal': ['race_number', 'season_progress', 'races_remaining', 'early_season',
+                    'mid_season', 'late_season', 'is_season_opener', 'is_season_finale',
+                    'post_2022', 'years_into_regulations'],
+        'Circuit': ['pole_win_rate', 'overtaking_difficulty', 'correlation', 'avg_pos_change',
+                   'dnf_rate', 'improved_pct', 'track_length', 'num_turns', 'altitude',
+                   'longest_straight', 'circuit_type', 'downforce_level', 'is_street'],
+        'Team Performance': ['avg_finish_last_5', 'avg_finish_last_3', 'points_last_5',
+                           'wins_season', 'podiums_season', 'points_total', 'momentum',
+                           'consistency', 'vs_average_grid', 'dnf_rate_last_10',
+                           'completion_rate_season'],
+        'Driver Stats': ['career_races', 'years_experience', 'is_rookie', 'is_veteran',
+                        'races_at_circuit', 'avg_finish_at_circuit', 'is_specialist',
+                        'vs_teammate', 'vs_car_potential', 'is_team_leader'],
+        'Interactions': ['grid_x_overtaking', 'grid_x_team_delta', 'grid_x_low_df',
+                        'momentum_x_variance', 'form_x_contention', 'veteran_new_circuit',
+                        'early_x_variance', 'late_contention_pressure']
+    }
+
+    # Calculate importance by category
+    if hasattr(pipeline.model, 'feature_importances_'):
+        importances = pipeline.model.feature_importances_
+        feature_names = pipeline.feature_names
+
+        importance_dict = dict(zip(feature_names, importances))
+
+        category_importance = {}
+        category_counts = {}
+
+        for category, features in categories.items():
+            # Find matching features (partial matches)
+            total_importance = 0
+            count = 0
+            for fname in feature_names:
+                for pattern in features:
+                    if pattern.lower() in fname.lower():
+                        total_importance += importance_dict.get(fname, 0)
+                        count += 1
+                        break
+
+            category_importance[category] = total_importance
+            category_counts[category] = count
+
+        # Create visualization
+        cat_df = pd.DataFrame({
+            'Category': list(category_importance.keys()),
+            'Total Importance': list(category_importance.values()),
+            'Feature Count': list(category_counts.values())
+        }).sort_values('Total Importance', ascending=False)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            fig1 = px.bar(
+                cat_df,
+                x='Category',
+                y='Total Importance',
+                title='Importance by Feature Category',
+                color='Total Importance',
+                color_continuous_scale='Viridis'
+            )
+            fig1.update_xaxes(tickangle=45)
+            fig1.update_layout(showlegend=False)
+            st.plotly_chart(fig1, use_container_width=True)
+
+        with col2:
+            fig2 = px.pie(
+                cat_df,
+                values='Feature Count',
+                names='Category',
+                title='Feature Distribution by Category'
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+
+        # Category details
+        st.markdown("### Category Details")
+        for _, row in cat_df.iterrows():
+            with st.expander(f"{row['Category']} ({row['Feature Count']} features)"):
+                cat_features = categories[row['Category']]
+                st.markdown("**Example features:**")
+                for feat in cat_features[:10]:
+                    st.markdown(f"- `{feat}`")
+
+
+def model_performance_viz(pipeline):
+    """Display model performance metrics"""
+
+    st.markdown("### Model Performance Metrics")
+
+    # Display metadata
+    metadata = pipeline.metadata
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### Training Performance")
+        st.metric("Training MAE", f"{metadata.get('train_mae', 0):.3f} positions")
+        st.metric("Training R²", f"{metadata.get('train_r2', 0):.3f}")
+        st.metric("Training Samples", metadata.get('train_samples', 'N/A'))
+
+    with col2:
+        st.markdown("#### Test Performance")
+        st.metric("Test MAE", f"{metadata.get('test_mae', 0):.3f} positions")
+        st.metric("Test R²", f"{metadata.get('test_r2', 0):.3f}")
+        st.metric("Test Samples", metadata.get('test_samples', 'N/A'))
+
+    # Performance breakdown
+    st.markdown("---")
+    st.markdown("### Performance Interpretation")
+
+    test_mae = metadata.get('test_mae', 0)
+    test_r2 = metadata.get('test_r2', 0)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### Mean Absolute Error (MAE)")
+        st.markdown(f"""
+        The model predicts race finish positions with an average error of **{test_mae:.2f} positions**.
+
+        This means:
+        - On average, predictions are within ~{test_mae:.0f} position of the actual result
+        - Approximately {(1-test_mae/10)*100:.0f}% accuracy for top-10 predictions
+        - High precision for podium and win probability estimates
+        """)
+
+    with col2:
+        st.markdown("#### R² Score (Coefficient of Determination)")
+        st.markdown(f"""
+        The model explains **{test_r2*100:.1f}%** of the variance in race outcomes.
+
+        This indicates:
+        - Very strong predictive power
+        - Captures the relationship between grid position and finish position
+        - Accounts for circuit, team, and driver factors effectively
+        """)
+
+    # Model specifications
+    st.markdown("---")
+    st.markdown("### Model Specifications")
+
+    specs_col1, specs_col2 = st.columns(2)
+
+    with specs_col1:
+        st.markdown(f"""
+        **Algorithm:** {metadata.get('model_type', 'N/A')}
+        **Features:** {len(pipeline.feature_names)}
+        **Training Period:** {metadata.get('training_date', 'N/A')}
+        """)
+
+    with specs_col2:
+        st.markdown(f"""
+        **Validation MAE:** {metadata.get('val_mae', 0):.3f} positions
+        **Validation R²:** {metadata.get('val_r2', 0):.3f}
+        **Validation Samples:** {metadata.get('val_samples', 'N/A')}
+        """)
+
+
+def prediction_analysis_viz(pipeline):
+    """Analyze prediction patterns and distributions"""
+
+    st.markdown("### Prediction Analysis")
+    st.markdown("Understanding how the model makes predictions:")
+
+    # Load training data for analysis
+    try:
+        train_data = pd.read_csv('data/processed/train.csv')
+
+        # Grid position vs actual finish
+        st.markdown("#### Grid Position vs Race Finish Distribution")
+
+        grid_finish_data = train_data.groupby('GridPosition').agg({
+            'Position_raw': ['mean', 'std', 'min', 'max', 'count']
+        }).round(2)
+
+        grid_finish_data.columns = ['Avg Finish', 'Std Dev', 'Best', 'Worst', 'Count']
+        grid_finish_data = grid_finish_data.reset_index()
+
+        fig = go.Figure()
+
+        # Add average line
+        fig.add_trace(go.Scatter(
+            x=grid_finish_data['GridPosition'],
+            y=grid_finish_data['Avg Finish'],
+            mode='lines+markers',
+            name='Average Finish',
+            line=dict(color='#2196F3', width=3),
+            marker=dict(size=8)
+        ))
+
+        # Add confidence band
+        fig.add_trace(go.Scatter(
+            x=grid_finish_data['GridPosition'],
+            y=grid_finish_data['Avg Finish'] + grid_finish_data['Std Dev'],
+            mode='lines',
+            name='Upper Bound',
+            line=dict(width=0),
+            showlegend=False
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=grid_finish_data['GridPosition'],
+            y=grid_finish_data['Avg Finish'] - grid_finish_data['Std Dev'],
+            mode='lines',
+            name='Lower Bound',
+            line=dict(width=0),
+            fillcolor='rgba(33, 150, 243, 0.2)',
+            fill='tonexty',
+            showlegend=True
+        ))
+
+        # Add diagonal reference
+        fig.add_trace(go.Scatter(
+            x=[1, 20],
+            y=[1, 20],
+            mode='lines',
+            name='No Change',
+            line=dict(dash='dash', color='red', width=2)
+        ))
+
+        fig.update_layout(
+            title='Grid Position vs Finish Position (Historical Data)',
+            xaxis_title='Grid Position',
+            yaxis_title='Finish Position',
+            height=500,
+            hovermode='x unified'
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Position change distribution
+        st.markdown("#### Position Change Distribution")
+
+        train_data['position_change'] = train_data['GridPosition'] - train_data['Position_raw']
+
+        fig2 = px.histogram(
+            train_data,
+            x='position_change',
+            nbins=40,
+            title='Distribution of Position Changes',
+            labels={'position_change': 'Position Change (Grid - Finish)'},
+            color_discrete_sequence=['#1976D2']
+        )
+
+        fig2.add_vline(
+            x=0,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="No Change"
+        )
+
+        fig2.update_layout(height=400)
+        st.plotly_chart(fig2, use_container_width=True)
+
+        # Key statistics
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            avg_change = train_data['position_change'].mean()
+            st.metric("Avg Position Change", f"{avg_change:+.2f}")
+
+        with col2:
+            improve_pct = (train_data['position_change'] > 0).mean() * 100
+            st.metric("% Improved Position", f"{improve_pct:.1f}%")
+
+        with col3:
+            decline_pct = (train_data['position_change'] < 0).mean() * 100
+            st.metric("% Lost Position", f"{decline_pct:.1f}%")
+
+        with col4:
+            same_pct = (train_data['position_change'] == 0).mean() * 100
+            st.metric("% No Change", f"{same_pct:.1f}%")
+
+    except Exception as e:
+        st.error(f"Could not load training data: {e}")
 
 
 def about_page():
