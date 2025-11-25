@@ -137,28 +137,20 @@ models/
 - **random_state**: 42
 
 ## Deployment Checklist
-- ✅ Model serialized and versioned
-- ✅ Preprocessing artifacts saved
-- ✅ Metadata documented
-- ✅ Example data provided
-- ✅ API specification created
-- ✅ CLI tool implemented
-- ✅ Python prediction pipeline
-- ✅ Comprehensive documentation
-- ✅ Performance metrics validated
+- Model serialized and versioned
+- Preprocessing artifacts saved
+- Metadata documented
+- Example data provided
+- API specification created
+- CLI tool implemented
+- Python prediction pipeline
+- Comprehensive documentation
+- Performance metrics validated
 
 ## Model Limitations
 - **Data Coverage**: Limited to 2018-2024 seasons
-- **Unknown Drivers**: New drivers use default statistics
-- **Track Changes**: Circuit modifications not reflected
-- **Weather**: No weather condition features
-- **Strategy**: Pit stop strategy not modeled
-
-## Future Improvements
-- Add real-time data integration
-- Include weather and track temperature
-- Model pit stop strategy impact
-- Implement ensemble with other algorithms
-- Add race simulation mode
-- Create web dashboard
-- Deploy as REST API service
+- **Unknown Drivers**: New drivers use default statistics until building race history
+- **Track Changes**: Circuit modifications or resurfacing not immediately reflected
+- **Weather**: No weather condition or track temperature features
+- **Strategy**: Pit stop strategies and tire choices not modeled
+- **Incidents**: First-lap crashes, safety cars, and red flags create unpredictable variance

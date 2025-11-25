@@ -2,127 +2,185 @@
 
 **V**aluating **A**dvantage **N**umerically **T**hrough **A**nalysis of **G**rid **E**ffects
 
-Machine learning model for predicting Formula 1 race outcomes based on starting grid positions and comprehensive race analysis.
+A machine learning system that predicts Formula 1 race finishing positions based on qualifying results, historical performance data, and circuit characteristics.
 
-## 🏆 Features
+## Overview
 
-- **Accurate Predictions**: MAE of 0.57 positions (within ~1 position accuracy)
-- **Interactive Dashboard**: Streamlit web interface for predictions and analysis
-- **Command Line Tool**: CLI for batch predictions and automation
-- **136 Engineered Features**: Comprehensive race data modeling
-- **Circuit Intelligence**: Analysis of 18 historic F1 circuits
+Starting grid position is one of the strongest predictors of race outcome in Formula 1, but its impact varies significantly across different circuits and conditions. VANTAGE quantifies these relationships using 7 years of race data (2018-2024) to forecast race results with high accuracy.
 
-## 🚀 Quick Start
+The system achieves a mean absolute error of **0.57 positions** on test data, meaning predictions are typically within one position of the actual finishing order. This level of precision is achieved through comprehensive feature engineering that captures team performance trends, driver experience, circuit-specific characteristics, and temporal factors like regulation changes.
+
+## Key Results
+
+- **Test MAE**: 0.57 positions (predicts within ~1 position on average)
+- **Test R²**: 0.971 (explains 97% of variance in finishing positions)
+- **Training Set**: 357 races from 2018-2022
+- **Test Set**: 360 races from 2023-2024
+- **Feature Count**: 136 engineered features
+- **Circuits Analyzed**: 18 distinct tracks
+
+## Installation
+
+```bash
+git clone https://github.com/yourusername/Vantage.git
+cd Vantage
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+## Quick Start
 
 ### Interactive Dashboard
 
-```bash
-# Launch the dashboard
-./run_dashboard.sh
+The Streamlit dashboard provides a web interface for predictions and analysis:
 
-# Or manually
-streamlit run app/dashboard.py
+```bash
+./run_dashboard.sh
+# Opens at http://localhost:8501
 ```
 
-The dashboard opens at `http://localhost:8501`
-
-### Command Line Predictions
+### Command Line Interface
 
 ```bash
-# Single driver prediction
+# Predict a single driver's finish
 python src/predict_cli.py single \
     --driver "Max Verstappen" \
     --team "Red Bull" \
     --circuit "Monaco" \
     --grid 1
 
-# Full grid simulation
+# Simulate an entire race from a grid configuration
 python src/predict_cli.py grid \
     --grid-file examples/example_grid.json
+
+# Interactive prediction mode
+python src/predict_cli.py interactive
 ```
 
-## 📊 Model Performance
+### Python API
 
-- **Test MAE**: 0.57 positions
-- **Test R²**: 0.971
-- **Training Data**: 780 races (2018-2024)
-- **Inference Time**: <50ms per prediction
+```python
+from src.prediction_pipeline import F1PredictionPipeline
 
-## 🛠️ Installation
+pipeline = F1PredictionPipeline()
 
-```bash
-# Clone repository
-git clone https://github.com/AsteriodBlues/Vantage.git
-cd Vantage
+result = pipeline.predict(
+    grid_position=3,
+    circuit_name="Silverstone",
+    team="Ferrari",
+    driver="Charles Leclerc",
+    year=2024,
+    race_number=10
+)
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+print(f"Predicted finish: P{result['predicted_finish_rounded']}")
+print(f"Win probability: {result['probabilities']['win']:.1%}")
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Vantage/
-├── app/                    # Streamlit dashboard
-│   ├── dashboard.py
-│   └── README.md
-├── src/                    # Source code
-│   ├── prediction_pipeline.py
-│   ├── predict_cli.py
-│   └── model_deployment.py
-├── models/                 # Trained models
-│   ├── production/
-│   └── preprocessing/
-├── data/                   # Data files
-│   ├── processed/
-│   └── raw/
-├── docs/                   # Documentation
-│   ├── model_performance.md
-│   └── api_specification.md
-└── examples/              # Example inputs
+├── app/                          # Streamlit web dashboard
+│   └── dashboard.py
+├── src/                          # Core source code
+│   ├── prediction_pipeline.py   # Main prediction interface
+│   ├── predict_cli.py           # Command-line tool
+│   └── model_deployment.py      # Model loading utilities
+├── models/                       # Trained models & preprocessors
+│   ├── production/              # Versioned production models
+│   └── preprocessing/           # Feature encoders & statistics
+├── data/                         # Raw and processed datasets
+├── notebooks/                    # Jupyter analysis notebooks
+├── results/                      # Generated figures & reports
+├── docs/                         # Documentation
+└── examples/                     # Sample input files
 ```
 
-## 📖 Documentation
+## How It Works
 
-- [Dashboard Guide](app/README.md)
-- [Model Performance](docs/model_performance.md)
-- [API Specification](docs/api_specification.md)
+### Data Collection
 
-## 🎯 Use Cases
+Race data is sourced from the FastF1 API, which provides official Formula 1 timing and telemetry information. The dataset includes:
+- Qualifying and race results for all sessions from 2018-2024
+- Driver and team information
+- Circuit layouts and characteristics
+- DNF (Did Not Finish) classifications
 
-- **Race Prediction**: Forecast finish positions from qualifying results
-- **Strategy Planning**: Analyze grid position advantages per circuit
-- **Historical Analysis**: Compare circuit characteristics and trends
-- **What-If Scenarios**: Simulate race outcomes with different grids
+### Feature Engineering
 
-## 🔧 Development
+The model uses 136 features organized into several categories:
 
-### Training a New Model
+**Grid Position Features**: Raw starting position plus transformations (squared, cubed, log, square root) and categorical indicators (pole, front row, top 5, etc.)
 
-```bash
-python train_simple_model.py
-```
+**Circuit Characteristics**: Historical statistics for each track including pole win rate, average position changes, overtaking difficulty, DNF rates, and physical track properties (length, corners, altitude, longest straight).
 
-### Building Feature Database
+**Team Performance**: Rolling averages of recent finishes, points scored, wins and podiums this season, momentum metrics, reliability statistics, and performance relative to grid position.
 
-```bash
-python build_feature_database.py
-```
+**Driver Metrics**: Career experience, races at specific circuit, historical performance at the track, recent form trends, and comparison to teammate.
 
-### Running Tests
+**Temporal Context**: Race number, season progress, regulation era (pre/post 2022 changes), championship standings phase.
 
-```bash
-pytest tests/
-```
+**Interaction Terms**: Combined features like grid position × overtaking difficulty, team form × championship pressure, and veteran driver on new circuit.
 
-## 📄 License
+### Model Architecture
 
-MIT License
+The production model is a Random Forest Regressor with 100 trees, trained on 2018-2022 data and validated on 2023-2024 seasons. The random forest approach was selected for its:
+- Strong performance on tabular data with mixed feature types
+- Inherent handling of non-linear relationships
+- Resistance to overfitting through ensemble averaging
+- Fast inference time (<50ms per prediction)
+- Clear feature importance interpretability
 
-## 🙏 Acknowledgments
+### Circuit Analysis
 
-Data sourced from historical F1 race results and statistics.
+One interesting finding from this project is the significant variation in grid position advantage across circuits. Monaco shows an 85% pole win rate, making qualifying position extremely important, while tracks like Bahrain and Spa show much lower pole win rates (45-50%) due to long straights enabling overtaking.
+
+Circuit clustering analysis identified four distinct track types based on overtaking difficulty, position volatility, and physical characteristics. This clustering helps the model understand which historical patterns apply to similar circuits.
+
+## Use Cases
+
+**Race Weekend Predictions**: After qualifying, predict the likely race outcome and win/podium probabilities for each driver.
+
+**Strategy Analysis**: Quantify the value of grid position at different circuits to inform qualifying vs race setup trade-offs.
+
+**Historical Comparison**: Analyze how regulation changes (particularly 2022 aerodynamic rules) affected racing and position changes.
+
+**What-If Scenarios**: Simulate hypothetical grids to understand how different qualifying outcomes might affect the race.
+
+## Technical Stack
+
+- **Data Processing**: pandas, numpy, FastF1
+- **Machine Learning**: scikit-learn, XGBoost, LightGBM, CatBoost
+- **Optimization**: Optuna
+- **Interpretation**: SHAP
+- **Visualization**: matplotlib, seaborn, plotly
+- **Deployment**: Streamlit
+- **Development**: Jupyter notebooks
+
+## Documentation
+
+- [Model Performance Details](docs/model_performance.md) - Comprehensive metrics and benchmarks
+- [API Specification](docs/api_specification.md) - Python API and CLI usage
+- [Data Collection Strategy](docs/data_collection_strategy.md) - Data sources and processing
+
+## Model Limitations
+
+The model performs best under typical race conditions and has some known limitations:
+
+- **Weather**: No weather or track temperature features included
+- **Strategy**: Pit stop strategies and tire choices not modeled
+- **Incidents**: First-lap collisions and safety cars create unpredictable variance
+- **New Drivers**: Rookies use default statistics until history builds up
+- **Track Changes**: Circuit modifications or resurfacing not immediately reflected
+
+Despite these limitations, the model captures the fundamental dynamics of grid position advantage and produces reliable predictions for normal race scenarios.
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Acknowledgments
+
+Built using race data from the FastF1 API. This project is for educational and analytical purposes only.

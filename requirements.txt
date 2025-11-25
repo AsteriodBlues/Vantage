@@ -3,8 +3,10 @@ fastf1>=3.4.0
 pandas>=2.2.0
 numpy>=1.26.0
 
-# Machine Learning
+# Machine Learning - Core
 scikit-learn>=1.5.0
+
+# Machine Learning - Gradient Boosting
 xgboost>=2.1.0
 lightgbm>=4.5.0
 catboost>=1.2.0
@@ -27,6 +29,6 @@ streamlit>=1.37.0
 tqdm>=4.66.0
 joblib>=1.4.0
 
-# Jupyter
+# Development
 jupyter>=1.0.0
 ipykernel>=6.29.0
