@@ -1,6 +1,7 @@
 # VANTAGE F1
 
 ![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat&logo=python&logoColor=white)
+![FastF1](https://img.shields.io/badge/FastF1-E10600?style=flat&logo=formula1&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-150458?style=flat&logo=pandas&logoColor=white)
 ![NumPy](https://img.shields.io/badge/NumPy-013243?style=flat&logo=numpy&logoColor=white)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat&logo=scikit-learn&logoColor=white)
@@ -9,8 +10,10 @@
 ![CatBoost](https://img.shields.io/badge/CatBoost-FFCC00?style=flat&logoColor=black)
 ![Optuna](https://img.shields.io/badge/Optuna-4051B5?style=flat&logoColor=white)
 ![SHAP](https://img.shields.io/badge/SHAP-FF6B6B?style=flat&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white)
+![Matplotlib](https://img.shields.io/badge/Matplotlib-11557c?style=flat&logoColor=white)
+![Seaborn](https://img.shields.io/badge/Seaborn-7db0bc?style=flat&logoColor=white)
 ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=flat&logo=plotly&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white)
 ![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=flat&logo=jupyter&logoColor=white)
 
 **V**aluating **A**dvantage **N**umerically **T**hrough **A**nalysis of **G**rid **E**ffects
