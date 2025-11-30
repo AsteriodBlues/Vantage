@@ -16,6 +16,8 @@
 ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?style=flat&logo=plotly&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white)
 ![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=flat&logo=jupyter&logoColor=white)
+![tqdm](https://img.shields.io/badge/tqdm-FFC107?style=flat&logoColor=black)
+![joblib](https://img.shields.io/badge/joblib-0D597F?style=flat&logoColor=white)
 
 **V**aluating **A**dvantage **N**umerically **T**hrough **A**nalysis of **G**rid **E**ffects
 
